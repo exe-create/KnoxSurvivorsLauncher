@@ -1,0 +1,23 @@
+KNOX SURVIVORS LAUNCHER
+
+1. Install Project Zomboid through Steam.
+2. Subscribe to Knox Survivors on Steam Workshop:
+   https://steamcommunity.com/sharedfiles/filedetails/?id=3749727604
+3. Let Steam finish downloading the mod.
+4. Extract this entire launcher archive.
+5. Windows: double-click "Launch Knox Survivors.cmd".
+   Linux: run scripts/launch-knox-survivors.sh.
+   macOS: double-click "Launch Knox Survivors.command".
+6. Press PLAY KNOX SURVIVORS.
+7. In Project Zomboid, make sure Knox Survivors is enabled for your save.
+
+Always start Project Zomboid through this launcher when using the IsoPlayer rebuild.
+
+The launcher uses Project Zomboid's own bundled Java runtime. You do not need to install
+Java 17 separately. It does not modify the game, request administrator access, or set
+permanent system options. Steam Workshop installs and updates the mod; this launcher
+verifies those files and enables the required Java agent only for the game process it starts.
+
+If the launcher says the Workshop build is still the older release, the IsoPlayer rebuild
+has not been published to Workshop yet. The launcher will intentionally refuse to mix the
+old mod with the new Java runtime.

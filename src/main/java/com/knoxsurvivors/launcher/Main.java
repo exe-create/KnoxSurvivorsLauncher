@@ -38,6 +38,8 @@ public final class Main {
     private LauncherInstallation installation;
 
     public static void main(String[] arguments) {
+        LauncherLog.write("start version=0.2.0 os=" + System.getProperty("os.name")
+            + " java=" + System.getProperty("java.version"));
         SwingUtilities.invokeLater(() -> {
             UIManager.put("OptionPane.background", BACKGROUND);
             UIManager.put("Panel.background", BACKGROUND);
@@ -98,8 +100,7 @@ public final class Main {
     }
 
     private void refresh() {
-        status.setText("Checking Steam and Workshop files…");
-        status.setForeground(MUTED);
+        setStatus("Checking Steam and Workshop files…", MUTED);
         launch.setEnabled(false);
         new SwingWorker<LauncherInstallation, Void>() {
             @Override protected LauncherInstallation doInBackground() throws Exception {
@@ -111,14 +112,14 @@ public final class Main {
             @Override protected void done() {
                 try {
                     installation = get();
-                    status.setText("READY  •  Workshop mod and Knox runtime verified");
-                    status.setForeground(GREEN);
+                    setStatus("READY  •  Workshop mod and Knox runtime verified", GREEN);
+                    LauncherLog.write("verification ready");
                     launch.setEnabled(true);
                 } catch (Exception exception) {
                     installation = null;
                     Throwable cause = exception.getCause() != null ? exception.getCause() : exception;
-                    status.setText("NOT READY  •  " + cause.getMessage());
-                    status.setForeground(new Color(235, 105, 135));
+                    setStatus("NOT READY  •  " + cause.getMessage(), new Color(235, 105, 135));
+                    LauncherLog.write("verification failed: " + cause);
                     launch.setEnabled(true);
                 }
             }
@@ -130,17 +131,34 @@ public final class Main {
         try {
             LauncherInstallation found = locator.locate();
             validator.validate(found);
-            status.setText("Launching Project Zomboid…");
-            status.setForeground(GREEN);
+            setStatus("Launching Project Zomboid…", GREEN);
             gameLauncher.launch(found);
             window.dispose();
         } catch (LauncherException exception) {
-            status.setText("NOT READY  •  " + exception.getMessage());
-            status.setForeground(new Color(235, 105, 135));
+            setStatus("NOT READY  •  " + exception.getMessage(), new Color(235, 105, 135));
+            LauncherLog.write("launch blocked: " + exception);
             JOptionPane.showMessageDialog(window, exception.getMessage(),
                 "Knox Survivors", JOptionPane.WARNING_MESSAGE);
             launch.setEnabled(true);
+        } catch (Exception exception) {
+            String message = "Project Zomboid could not be launched. Verify Steam and the Workshop download, then try again.";
+            setStatus("NOT READY  •  " + message, new Color(235, 105, 135));
+            LauncherLog.write("launch failed: " + exception);
+            JOptionPane.showMessageDialog(window,
+                message + "\n\nSupport log: " + LauncherLog.path(),
+                "Knox Survivors", JOptionPane.ERROR_MESSAGE);
+            launch.setEnabled(true);
         }
+    }
+
+    private void setStatus(String text, Color color) {
+        status.setText("<html><div style='text-align:center;width:540px'>"
+            + escapeHtml(text) + "</div></html>");
+        status.setForeground(color);
+    }
+
+    private static String escapeHtml(String value) {
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     private static final class BorderedPanel extends JPanel {

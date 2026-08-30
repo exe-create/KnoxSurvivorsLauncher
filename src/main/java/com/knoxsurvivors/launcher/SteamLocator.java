@@ -50,8 +50,8 @@ final class SteamLocator {
             }
         }
         throw new LauncherException(
-            "Project Zomboid and the subscribed Knox Survivors Workshop item could not both be found. "
-                + "Make sure Steam has finished downloading Workshop item " + WORKSHOP_ITEM_ID + "."
+            "Project Zomboid or Knox Survivors was not found. Subscribe to Workshop item "
+                + WORKSHOP_ITEM_ID + ", let Steam finish downloading it, then press Play again."
         );
     }
 

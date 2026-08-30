@@ -8,11 +8,14 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.Properties;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 
 final class InstallationValidator {
     private static final String EXPECTED_PREMAIN = "com.knoxsurvivors.agent.KnoxAgent";
+    private static final String EXPECTED_RUNTIME = "iso-player-agent-v1";
+    private static final String LAUNCHER_COMPATIBILITY = "1";
 
     void validate(LauncherInstallation installation) throws LauncherException {
         require(Files.isDirectory(installation.gameDirectory()),
@@ -26,14 +29,19 @@ final class InstallationValidator {
         require(Files.isRegularFile(buildInfo),
             "The subscribed Workshop item is still the older Knox Survivors release. "
                 + "The IsoPlayer rebuild has not been published there yet.");
-        try {
-            String marker = Files.readString(buildInfo, StandardCharsets.UTF_8);
-            require(marker.contains("runtime=iso-player-agent-v1"),
+        try (InputStream input = Files.newInputStream(buildInfo)) {
+            Properties marker = new Properties();
+            marker.load(input);
+            require(EXPECTED_RUNTIME.equals(marker.getProperty("runtime")),
                 "The Workshop mod and launcher runtime are not compatible.");
+            require(LAUNCHER_COMPATIBILITY.equals(marker.getProperty("launcherCompatibility")),
+                "This launcher and the Workshop build are different versions. Download the latest launcher release.");
+            String runtimeVersion = marker.getProperty("runtimeVersion", "").trim();
+            require(!runtimeVersion.isEmpty(), "The Workshop runtime version is missing.");
+            validateAgent(installation.agentJar(), runtimeVersion);
         } catch (IOException exception) {
             throw new LauncherException("The Knox runtime marker could not be read.", exception);
         }
-        validateAgent(installation.agentJar());
     }
 
     private static void validateModInfo(Path file) throws LauncherException {
@@ -47,12 +55,14 @@ final class InstallationValidator {
         }
     }
 
-    private static void validateAgent(Path jar) throws LauncherException {
+    private static void validateAgent(Path jar, String runtimeVersion) throws LauncherException {
         require(jar != null && Files.isRegularFile(jar), "The Knox Java runtime is missing.");
         try (JarFile archive = new JarFile(jar.toFile())) {
             Attributes attributes = archive.getManifest().getMainAttributes();
             require(EXPECTED_PREMAIN.equals(attributes.getValue("Premain-Class")),
                 "The Knox Java runtime has an invalid launcher manifest.");
+            require(runtimeVersion.equals(attributes.getValue("Implementation-Version")),
+                "The Workshop mod and Knox Java runtime versions do not match. Let Steam finish updating and try again.");
         } catch (IOException exception) {
             throw new LauncherException("The Knox Java runtime could not be opened.", exception);
         }

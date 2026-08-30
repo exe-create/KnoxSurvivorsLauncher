@@ -37,8 +37,10 @@ public final class LauncherVerifier {
         Files.writeString(game.resolve("projectzomboid.jar"), "test");
         Files.writeString(game.resolve("ProjectZomboid64.bat"), "@echo off");
         Files.writeString(mod.resolve("mod.info"), "name=Knox Survivors\nid=KnoxSurvivors\n");
-        Files.writeString(mod.resolve("42/knox-runtime.properties"), "runtime=iso-player-agent-v1\n");
-        createAgent(jar);
+        Files.writeString(mod.resolve("42/knox-runtime.properties"),
+            "runtime=iso-player-agent-v1\nlauncherCompatibility=1\nruntimeVersion=0.2.0\n");
+        createAgent(jar, "0.2.0");
+        Files.writeString(Path.of(jar + ".sha256"), sha256(jar) + "  " + jar.getFileName());
         Files.createDirectories(steam.resolve("steamapps"));
         Files.writeString(
             steam.resolve("steamapps/libraryfolders.vdf"),
@@ -82,8 +84,9 @@ public final class LauncherVerifier {
         Files.writeString(game.resolve("ProjectZomboid64.bat"), "@echo off");
         Files.writeString(game.resolve("projectzomboid.sh"), "#!/bin/sh");
         Files.writeString(mod.resolve("mod.info"), "name=Knox Survivors\nid=KnoxSurvivors\n");
-        Files.writeString(mod.resolve("42/knox-runtime.properties"), "runtime=iso-player-agent-v1\n");
-        createAgent(jar);
+        Files.writeString(mod.resolve("42/knox-runtime.properties"),
+            "runtime=iso-player-agent-v1\nlauncherCompatibility=1\nruntimeVersion=0.2.0\n");
+        createAgent(jar, "0.2.0");
         Files.writeString(Path.of(jar + ".sha256"), sha256(jar) + "  " + jar.getFileName());
 
         InstallationValidator validator = new InstallationValidator();
@@ -100,11 +103,12 @@ public final class LauncherVerifier {
         }
     }
 
-    private static void createAgent(Path path) throws IOException {
+    private static void createAgent(Path path, String version) throws IOException {
         Manifest manifest = new Manifest();
         Attributes attributes = manifest.getMainAttributes();
         attributes.put(Attributes.Name.MANIFEST_VERSION, "1.0");
         attributes.putValue("Premain-Class", "com.knoxsurvivors.agent.KnoxAgent");
+        attributes.putValue("Implementation-Version", version);
         try (JarOutputStream output = new JarOutputStream(Files.newOutputStream(path), manifest)) {
             // Manifest-only test agent is enough for launcher validation.
         }

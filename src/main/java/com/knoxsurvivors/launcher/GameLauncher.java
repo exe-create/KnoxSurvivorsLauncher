@@ -23,7 +23,11 @@ final class GameLauncher {
             existing.isEmpty() ? agent : existing + " " + agent
         );
         try {
-            return builder.start();
+            Process process = builder.start();
+            LauncherLog.write("launched platform=" + installation.platform()
+                + " game=" + installation.gameDirectory()
+                + " workshop=" + installation.workshopDirectory());
+            return process;
         } catch (IOException exception) {
             throw new LauncherException(
                 "Project Zomboid could not be started. Verify the game through Steam and try again.",

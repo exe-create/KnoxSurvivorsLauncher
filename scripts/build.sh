@@ -7,6 +7,7 @@ CLASSES="$BUILD/classes"
 TEST_CLASSES="$BUILD/test-classes"
 DIST="$ROOT/dist"
 rm -rf "$BUILD"
+rm -rf "$DIST"
 mkdir -p "$CLASSES" "$TEST_CLASSES" "$DIST"
 find "$ROOT/src/main/java" -name '*.java' -print > "$BUILD/main-sources.txt"
 javac --release 17 -d "$CLASSES" @"$BUILD/main-sources.txt"
@@ -17,13 +18,22 @@ javac --release 17 -cp "$CLASSES" -d "$TEST_CLASSES" @"$BUILD/test-sources.txt"
 java -cp "$CLASSES:$TEST_CLASSES" com.knoxsurvivors.launcher.LauncherVerifier
 
 WIN="$BUILD/windows/Knox Survivors Launcher"
-UNIX="$BUILD/unix/Knox Survivors Launcher"
-mkdir -p "$WIN/scripts" "$UNIX/scripts"
+LINUX="$BUILD/linux/Knox Survivors Launcher"
+MACOS="$BUILD/macos/Knox Survivors Launcher"
+mkdir -p "$WIN/scripts" "$LINUX/scripts" "$MACOS/scripts"
 cp "$ROOT/KnoxSurvivorsLauncher.jar" "$ROOT/Launch Knox Survivors.cmd" "$ROOT/README.txt" "$WIN/"
 cp "$ROOT/scripts/launch-knox-survivors.ps1" "$WIN/scripts/"
-cp "$ROOT/KnoxSurvivorsLauncher.jar" "$ROOT/Launch Knox Survivors.command" "$ROOT/README.txt" "$UNIX/"
-cp "$ROOT/scripts/launch-knox-survivors.sh" "$UNIX/scripts/"
-chmod +x "$UNIX/Launch Knox Survivors.command" "$UNIX/scripts/launch-knox-survivors.sh"
+cp "$ROOT/KnoxSurvivorsLauncher.jar" "$ROOT/README.txt" "$LINUX/"
+cp "$ROOT/scripts/launch-knox-survivors.sh" "$LINUX/scripts/"
+cp "$ROOT/KnoxSurvivorsLauncher.jar" "$ROOT/Launch Knox Survivors.command" "$ROOT/README.txt" "$MACOS/"
+cp "$ROOT/scripts/launch-knox-survivors.sh" "$MACOS/scripts/"
+chmod +x "$LINUX/scripts/launch-knox-survivors.sh"
+chmod +x "$MACOS/Launch Knox Survivors.command" "$MACOS/scripts/launch-knox-survivors.sh"
 (cd "$BUILD/windows" && zip -qr "$DIST/KnoxSurvivorsLauncher-windows.zip" "Knox Survivors Launcher")
-(cd "$BUILD/unix" && zip -qr "$DIST/KnoxSurvivorsLauncher-linux-macos.zip" "Knox Survivors Launcher")
-(cd "$DIST" && sha256sum KnoxSurvivorsLauncher-*.zip > SHA256SUMS.txt)
+(cd "$BUILD/linux" && zip -qr "$DIST/KnoxSurvivorsLauncher-linux.zip" "Knox Survivors Launcher")
+(cd "$BUILD/macos" && zip -qr "$DIST/KnoxSurvivorsLauncher-macos.zip" "Knox Survivors Launcher")
+if command -v sha256sum >/dev/null 2>&1; then
+    (cd "$DIST" && sha256sum KnoxSurvivorsLauncher-*.zip > SHA256SUMS.txt)
+else
+    (cd "$DIST" && shasum -a 256 KnoxSurvivorsLauncher-*.zip > SHA256SUMS.txt)
+fi

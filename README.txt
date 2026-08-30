@@ -6,7 +6,7 @@ KNOX SURVIVORS LAUNCHER
 3. Let Steam finish downloading the mod.
 4. Extract this entire launcher archive.
 5. Windows: double-click "Launch Knox Survivors.cmd".
-   Linux: run scripts/launch-knox-survivors.sh.
+   Linux: open a terminal here and run scripts/launch-knox-survivors.sh.
    macOS: double-click "Launch Knox Survivors.command".
 6. Press PLAY KNOX SURVIVORS.
 7. In Project Zomboid, make sure Knox Survivors is enabled for your save.
@@ -21,3 +21,7 @@ verifies those files and enables the required Java agent only for the game proce
 If the launcher says the Workshop build is still the older release, the IsoPlayer rebuild
 has not been published to Workshop yet. The launcher will intentionally refuse to mix the
 old mod with the new Java runtime.
+
+If something fails, include this support log with your report:
+Windows: %USERPROFILE%\KnoxSurvivors\launcher.log
+Linux/macOS: ~/KnoxSurvivors/launcher.log

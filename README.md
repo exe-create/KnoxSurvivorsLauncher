@@ -1,5 +1,7 @@
 # Knox Survivors Launcher
 
+[![Windows, Linux, and macOS checks](https://github.com/exe-create/KnoxSurvivorsLauncher/actions/workflows/release.yml/badge.svg)](https://github.com/exe-create/KnoxSurvivorsLauncher/actions/workflows/release.yml)
+
 This is the small companion launcher for the Project Zomboid 42.20 Knox Survivors
 IsoPlayer rebuild.
 

@@ -18,6 +18,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Launcher packaging failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'Launcher verifier compilation failed.' }
 & java -cp "$classes;$testClasses" com.knoxsurvivors.launcher.LauncherVerifier
 if ($LASTEXITCODE -ne 0) { throw 'Launcher verification failed.' }
+& (Join-Path $PSScriptRoot 'verify-bootstrap.ps1')
 
 $windowsStage = Join-Path $build 'windows\Knox Survivors Launcher'
 $linuxStage = Join-Path $build 'linux\Knox Survivors Launcher'

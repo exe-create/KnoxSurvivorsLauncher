@@ -43,7 +43,8 @@ final class GameLauncher {
             command.add("/d");
             command.add("/s");
             command.add("/c");
-            command.add("\"" + installation.gameLauncher().toAbsolutePath() + "\"");
+            // cmd /s strips the outer quotes; retain the inner pair around spaced paths.
+            command.add("\"\"" + installation.gameLauncher().toAbsolutePath() + "\"\"");
         } else if (installation.gameLauncher().getFileName().toString().endsWith(".sh")) {
             command.add("/bin/sh");
             command.add(installation.gameLauncher().toAbsolutePath().toString());

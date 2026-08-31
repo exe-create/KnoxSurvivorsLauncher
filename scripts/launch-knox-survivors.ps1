@@ -29,7 +29,7 @@ foreach ($root in $steamRoots) {
     if (Test-Path -LiteralPath $vdf) {
         foreach ($line in Get-Content -LiteralPath $vdf) {
             if ($line -match '"path"\s+"([^"]+)"') {
-                $libraries.Add($Matches[1] -replace '\\\\', '\')
+                $libraries.Add(($Matches[1] -replace '\\\\', '\'))
             }
         }
     }
@@ -50,4 +50,6 @@ if ($null -eq $javaw) {
 if ($steamRoots.Count -gt 0) {
     $env:KNOX_STEAM_ROOT = $steamRoots[0]
 }
-Start-Process -FilePath $javaw -ArgumentList @('-jar', $launcherJar) -WorkingDirectory $launcherRoot
+# Start-Process joins argument arrays into one Windows command line. Quote the
+# JAR explicitly: the distributed folder name itself contains spaces.
+Start-Process -FilePath $javaw -ArgumentList ('-jar "' + $launcherJar + '"') -WorkingDirectory $launcherRoot -WindowStyle Hidden

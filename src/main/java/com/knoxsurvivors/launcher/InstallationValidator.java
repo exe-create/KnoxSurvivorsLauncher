@@ -25,6 +25,7 @@ final class InstallationValidator {
         require(Files.isRegularFile(installation.gameDirectory().resolve("projectzomboid.jar")),
             "Project Zomboid looks incomplete. Verify the game through Steam.");
         validateModInfo(installation.modDirectory().resolve("mod.info"));
+        validateModInfo(installation.modDirectory().resolve("42/mod.info"));
         Path buildInfo = installation.modDirectory().resolve("42/knox-runtime.properties");
         require(Files.isRegularFile(buildInfo),
             "The subscribed Workshop item is still the older Knox Survivors release. "
@@ -58,6 +59,8 @@ final class InstallationValidator {
     private static void validateAgent(Path jar, String runtimeVersion) throws LauncherException {
         require(jar != null && Files.isRegularFile(jar), "The Knox Java runtime is missing.");
         try (JarFile archive = new JarFile(jar.toFile())) {
+            require(archive.getManifest() != null,
+                "The Knox Java runtime has no launcher manifest. Verify the Workshop item through Steam.");
             Attributes attributes = archive.getManifest().getMainAttributes();
             require(EXPECTED_PREMAIN.equals(attributes.getValue("Premain-Class")),
                 "The Knox Java runtime has an invalid launcher manifest.");

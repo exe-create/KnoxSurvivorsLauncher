@@ -25,7 +25,8 @@ If Windows warns about the downloaded file, choose **More info** and confirm onl
 3. Run `./scripts/launch-knox-survivors.sh`.
 4. Press **PLAY KNOX SURVIVORS**.
 
-Steam installed through Flatpak and the usual native Steam locations are supported. A desktop environment is required for the launcher window.
+The locator checks Flatpak and usual native Steam locations. A desktop environment is
+required; Flatpak permissions and actual game launching still need live tester confirmation.
 
 ## macOS
 
@@ -48,3 +49,14 @@ Please include:
 - Project Zomboid's `console.txt` when the game launched but the mod failed.
 
 Do not post save files or logs publicly without checking them for personal paths first.
+
+## Automated checks
+
+The build verifies published Workshop layout, split Steam libraries, missing/mismatched
+files, corrupt checksums, duplicate runtimes, and real child-process command quoting with
+spaced paths. Windows also tests the bootstrap script with a temporary Steam/library
+fixture. These checks do not start Project Zomboid or validate in-game NPC behavior.
+
+Maintainers can check a staged upload with `LauncherVerifier`, using the built main/test
+classes and two arguments: the installed game directory, then the staging `Contents`
+directory. The mod source repository is not needed by a subscriber's launcher.

@@ -9,11 +9,11 @@ DIST="$ROOT/dist"
 rm -rf "$BUILD"
 rm -rf "$DIST"
 mkdir -p "$CLASSES" "$TEST_CLASSES" "$DIST"
-find "$ROOT/src/main/java" -name '*.java' -print > "$BUILD/main-sources.txt"
+find "$ROOT/src/main/java" -name '*.java' -print | sed 's/.*/"&"/' > "$BUILD/main-sources.txt"
 javac --release 17 -d "$CLASSES" @"$BUILD/main-sources.txt"
 jar --create --file "$ROOT/KnoxSurvivorsLauncher.jar" \
     --main-class com.knoxsurvivors.launcher.Main -C "$CLASSES" .
-find "$ROOT/src/test/java" -name '*.java' -print > "$BUILD/test-sources.txt"
+find "$ROOT/src/test/java" -name '*.java' -print | sed 's/.*/"&"/' > "$BUILD/test-sources.txt"
 javac --release 17 -cp "$CLASSES" -d "$TEST_CLASSES" @"$BUILD/test-sources.txt"
 java -cp "$CLASSES:$TEST_CLASSES" com.knoxsurvivors.launcher.LauncherVerifier
 

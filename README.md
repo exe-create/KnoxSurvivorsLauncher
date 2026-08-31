@@ -14,7 +14,7 @@ game, modify Steam, request administrator access, or set permanent environment v
 
 1. Install Project Zomboid through Steam.
 2. [Subscribe to Knox Survivors](https://steamcommunity.com/sharedfiles/filedetails/?id=3749727604).
-3. Download the Windows, Linux, or macOS archive from [Releases](../../releases/latest).
+3. Download the Windows, Linux, or macOS archive from [Releases](https://github.com/exe-create/KnoxSurvivorsLauncher/releases). Use the preview ZIP for your system, not GitHub's source-code ZIP.
 4. Extract the complete archive. Do not run it from inside the ZIP.
 5. Start the launcher:
    - Windows: double-click **Launch Knox Survivors.cmd**.
@@ -35,12 +35,19 @@ to the bug report. The log contains launcher paths and results but no Steam pass
 
 ## Supported systems
 
+Windows is the primary test platform. Linux/macOS packages have automated checks,
+but actual game launch and gameplay on those systems still need tester confirmation.
+Flatpak permissions, macOS security prompts, and game runtime layouts can differ.
+
 - Windows Steam installation, including extra Steam library drives
 - Linux Steam installation, including common native and Flatpak locations
 - macOS Steam installation
 
 The shared launcher is written in Java 17 and runs on Project Zomboid's own newer bundled
 runtime. Platform wrappers only locate that bundled runtime and open the same launcher UI.
+
+The mod's source repository can stay private. Players do not need access to it or a
+GitHub account: the public launcher uses the Java runtime delivered with the Workshop mod.
 
 ## Build
 

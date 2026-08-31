@@ -2,6 +2,8 @@ name: Build launcher release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
   workflow_dispatch:
@@ -55,6 +57,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           prerelease: true
+          draft: true
           generate_release_notes: true
           body: |
             Preview launcher for the Knox Survivors IsoPlayer rebuild.

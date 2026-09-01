@@ -31,10 +31,14 @@ is not required.
 ZombieBuddy is not required by Knox Survivors. If you use it, complete ZombieBuddy's own
 installation first; subscribing to its Workshop item alone does not install its native/Java
 agent into Project Zomboid. The Knox launcher detects a valid installed ZombieBuddy agent,
-preserves an existing configuration, avoids loading it twice, and places it before the Knox
-agent when the launcher must supply the option. On Windows this supports `zbNative.dll` plus
+preserves an existing configuration, and places it before the Knox agent. On Windows this
+supports `zbNative.dll` plus
 `ZombieBuddy.jar` and carries its compatible options from `ProjectZomboid64.json`;
 Linux/macOS support the separately installed `ZombieBuddy.jar`.
+
+When an existing platform launcher also contains ZombieBuddy, Knox composes ZombieBuddy first
+in the child JVM environment. ZombieBuddy's own duplicate-install guard safely ignores the later
+platform-launcher entry. This avoids Knox initializing before ZombieBuddy's Lua exposure is ready.
 
 You do not need to edit `ProjectZomboid64.bat` specifically for Knox compatibility. The
 launcher executes Project Zomboid's existing platform launcher, so its normal JVM arguments

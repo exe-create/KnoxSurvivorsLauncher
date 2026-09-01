@@ -11,8 +11,8 @@ import java.util.regex.Pattern;
 /** Optional detection only; ZombieBuddy remains separately installed and owned. */
 final class ZombieBuddyCompatibility {
     private static final String PREMAIN = "me.zed_0xff.zombie_buddy.Agent";
-    private static final Pattern WINDOWS_JSON_OPTION = Pattern.compile(
-        "\\\"(-agentlib:zbNative(?:=[A-Za-z0-9_=,.-]+)?)\\\"", Pattern.CASE_INSENSITIVE
+    private static final Pattern WINDOWS_AGENT_OPTION = Pattern.compile(
+        "(-agentlib:zbNative(?:=[^\\s\\\"']+)?)", Pattern.CASE_INSENSITIVE
     );
 
     record Result(String option, String state) {
@@ -25,12 +25,16 @@ final class ZombieBuddyCompatibility {
             Path jar = game.resolve("ZombieBuddy.jar");
             Path nativeAgent = game.resolve("zbNative.dll");
             if (validJar(jar) && Files.isRegularFile(nativeAgent)) {
-                if (launcherAlreadyConfigures(installation.gameLauncher(), "-agentlib:zbnative")) {
-                    return new Result(null, "enabled-by-game-launcher");
+                // JAVA_TOOL_OPTIONS is processed before the BAT's _JAVA_OPTIONS. Compose
+                // ZombieBuddy here even when the BAT is already patched so its first
+                // initialization is guaranteed to happen before the Knox Java agent.
+                // ZombieBuddy itself guards a later duplicate entry from a patched BAT.
+                String configured = windowsAgentOption(installation.gameLauncher());
+                if (configured == null) {
+                    configured = windowsAgentOption(game.resolve("ProjectZomboid64.json"));
                 }
-                String configured = windowsJsonOption(game.resolve("ProjectZomboid64.json"));
                 return new Result(configured != null ? configured : "-agentlib:zbNative",
-                    configured != null ? "enabled-windows-json" : "enabled-windows-native");
+                    configured != null ? "enabled-windows-configured" : "enabled-windows-native");
             }
             if (Files.exists(jar) || Files.exists(nativeAgent)) {
                 return new Result(null, "incomplete-windows-install");
@@ -45,9 +49,8 @@ final class ZombieBuddyCompatibility {
             : List.of(game.resolve("projectzomboid/ZombieBuddy.jar"), game.resolve("ZombieBuddy.jar"));
         for (Path jar : candidates) {
             if (validJar(jar)) {
-                if (launcherAlreadyConfigures(installation.gameLauncher(), "zombiebuddy.jar")) {
-                    return new Result(null, "enabled-by-game-launcher");
-                }
+                // The platform launcher may also contain this agent. Supplying it first
+                // preserves deterministic ordering; ZombieBuddy ignores its later duplicate.
                 return new Result("-javaagent:\"" + jar.toAbsolutePath() + "\"", "enabled-java-agent");
             }
         }
@@ -55,21 +58,12 @@ final class ZombieBuddyCompatibility {
         return new Result(null, "not-installed");
     }
 
-    private static String windowsJsonOption(Path json) {
+    private static String windowsAgentOption(Path configuration) {
         try {
-            Matcher matcher = WINDOWS_JSON_OPTION.matcher(Files.readString(json));
+            Matcher matcher = WINDOWS_AGENT_OPTION.matcher(Files.readString(configuration));
             return matcher.find() ? matcher.group(1) : null;
         } catch (IOException unavailable) {
             return null;
-        }
-    }
-
-    private static boolean launcherAlreadyConfigures(Path launcher, String marker) {
-        try {
-            return Files.isRegularFile(launcher)
-                && Files.readString(launcher).toLowerCase(java.util.Locale.ROOT).contains(marker);
-        } catch (IOException unreadable) {
-            return false;
         }
     }
 

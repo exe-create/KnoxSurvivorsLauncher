@@ -242,13 +242,19 @@ public final class LauncherVerifier {
             }
             Path configuredLauncher = game.resolve(platform == Platform.WINDOWS ? "ProjectZomboid64.bat" : "projectzomboid.sh");
             Files.writeString(configuredLauncher, platform == Platform.WINDOWS
-                ? "SET _JAVA_OPTIONS=-agentlib:zbNative" : "java -javaagent:ZombieBuddy.jar");
+                ? "SET _JAVA_OPTIONS=-agentlib:zbNative=verbosity=2,policy=deny-new"
+                : "java -javaagent:ZombieBuddy.jar");
             LauncherInstallation configured = new LauncherInstallation(
                 root, game, root, root, knox, configuredLauncher, platform
             );
-            String notDuplicated = GameLauncher.toolOptions(configured, "");
-            require(!notDuplicated.contains(marker) && notDuplicated.contains("knox-agent-test.jar"),
-                platform + " duplicated an agent already owned by the game launcher");
+            String ordered = GameLauncher.toolOptions(configured, "");
+            require(ordered.contains(marker) && ordered.contains("knox-agent-test.jar")
+                && ordered.indexOf(marker) < ordered.indexOf("knox-agent-test.jar"),
+                platform + " did not place the configured ZombieBuddy agent before Knox");
+            if (platform == Platform.WINDOWS) {
+                require(ordered.startsWith("-agentlib:zbNative=verbosity=2,policy=deny-new "),
+                    "Windows BAT ZombieBuddy options were not preserved");
+            }
             Files.delete(configuredLauncher);
             removeZombieBuddy(game, platform);
         }

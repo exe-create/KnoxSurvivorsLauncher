@@ -69,7 +69,8 @@ publishing a launcher update:
 1. No ZombieBuddy game-directory files: Knox launches normally and does not add it.
 2. Valid `ZombieBuddy.jar` plus `zbNative.dll`: the launcher status reports detection;
    `JAVA_TOOL_OPTIONS` places `-agentlib:zbNative` before the Knox agent.
-3. The BAT already contains `-agentlib:zbNative`: it is not duplicated.
+3. The BAT already contains `-agentlib:zbNative`: ZombieBuddy is composed before Knox in
+   `JAVA_TOOL_OPTIONS`; ZombieBuddy safely ignores the later BAT entry.
 4. A custom inherited ZombieBuddy option such as `verbosity=2` remains byte-for-byte intact.
 5. With ZombieBuddy and FastLoading enabled, confirm the `ZombieBuddy` Lua global and the
    FastLoading Java class exist, while the Knox bridge still reports ready.

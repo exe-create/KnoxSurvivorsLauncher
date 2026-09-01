@@ -38,7 +38,7 @@ public final class Main {
     private LauncherInstallation installation;
 
     public static void main(String[] arguments) {
-        LauncherLog.write("start version=0.2.0 os=" + System.getProperty("os.name")
+        LauncherLog.write("start version=0.2.1 os=" + System.getProperty("os.name")
             + " java=" + System.getProperty("java.version"));
         SwingUtilities.invokeLater(() -> {
             UIManager.put("OptionPane.background", BACKGROUND);
@@ -112,7 +112,10 @@ public final class Main {
             @Override protected void done() {
                 try {
                     installation = get();
-                    setStatus("READY  •  Workshop mod and Knox runtime verified", GREEN);
+                    var zombieBuddy = ZombieBuddyCompatibility.inspect(installation);
+                    String optional = zombieBuddy.enabled() || zombieBuddy.state().equals("enabled-by-game-launcher")
+                        ? "  •  ZombieBuddy detected" : "";
+                    setStatus("READY  •  Workshop mod and Knox runtime verified" + optional, GREEN);
                     LauncherLog.write("verification ready");
                     launch.setEnabled(true);
                 } catch (Exception exception) {

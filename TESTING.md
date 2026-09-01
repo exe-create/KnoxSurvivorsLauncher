@@ -60,3 +60,19 @@ fixture. These checks do not start Project Zomboid or validate in-game NPC behav
 Maintainers can check a staged upload with `LauncherVerifier`, using the built main/test
 classes and two arguments: the installed game directory, then the staging `Contents`
 directory. The mod source repository is not needed by a subscriber's launcher.
+
+# Optional ZombieBuddy compatibility
+
+ZombieBuddy remains a separate optional installation. Test these cases on Windows before
+publishing a launcher update:
+
+1. No ZombieBuddy game-directory files: Knox launches normally and does not add it.
+2. Valid `ZombieBuddy.jar` plus `zbNative.dll`: the launcher status reports detection;
+   `JAVA_TOOL_OPTIONS` places `-agentlib:zbNative` before the Knox agent.
+3. The BAT already contains `-agentlib:zbNative`: it is not duplicated.
+4. A custom inherited ZombieBuddy option such as `verbosity=2` remains byte-for-byte intact.
+5. With ZombieBuddy and FastLoading enabled, confirm the `ZombieBuddy` Lua global and the
+   FastLoading Java class exist, while the Knox bridge still reports ready.
+
+Subscription without ZombieBuddy's separate installation is expected to remain unavailable;
+the Knox launcher does not silently execute native code directly from a Workshop subscription.

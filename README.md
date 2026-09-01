@@ -26,6 +26,21 @@ game, modify Steam, request administrator access, or set permanent environment v
 The launcher uses Project Zomboid's bundled Java runtime. A separate Java 17 installation
 is not required.
 
+### Optional ZombieBuddy compatibility
+
+ZombieBuddy is not required by Knox Survivors. If you use it, complete ZombieBuddy's own
+installation first; subscribing to its Workshop item alone does not install its native/Java
+agent into Project Zomboid. The Knox launcher detects a valid installed ZombieBuddy agent,
+preserves an existing configuration, avoids loading it twice, and places it before the Knox
+agent when the launcher must supply the option. On Windows this supports `zbNative.dll` plus
+`ZombieBuddy.jar` and carries its compatible options from `ProjectZomboid64.json`;
+Linux/macOS support the separately installed `ZombieBuddy.jar`.
+
+You do not need to edit `ProjectZomboid64.bat` specifically for Knox compatibility. The
+launcher executes Project Zomboid's existing platform launcher, so its normal JVM arguments
+remain authoritative, and inherited `JAVA_TOOL_OPTIONS` are preserved. Knox does not copy,
+approve, update, or silently enable another mod's native code.
+
 If launch or verification fails, attach `KnoxSurvivors/launcher.log` from your home folder
 to the bug report. The log contains launcher paths and results but no Steam password or token.
 

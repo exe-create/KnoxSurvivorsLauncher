@@ -13,6 +13,13 @@ KNOX SURVIVORS LAUNCHER
 
 Always start Project Zomboid through this launcher when using the IsoPlayer rebuild.
 
+OPTIONAL ZOMBIEBUDDY COMPATIBILITY
+
+ZombieBuddy is not required. If you use it, complete ZombieBuddy's own installation first;
+subscribing to its Workshop item alone is not enough. The Knox launcher will detect a valid
+installed ZombieBuddy agent, preserve its options, prevent duplicate loading, and start it
+before Knox when needed. You do not need to edit ProjectZomboid64.bat specifically for Knox.
+
 The launcher uses Project Zomboid's own bundled Java runtime. You do not need to install
 Java 17 separately. It does not modify the game, request administrator access, or set
 permanent system options. Steam Workshop installs and updates the mod; this launcher

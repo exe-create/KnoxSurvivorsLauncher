@@ -8,6 +8,7 @@ import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.jar.Attributes;
+import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 
@@ -18,8 +19,10 @@ public final class LauncherVerifier {
             verifyLibraryParsing(root);
             verifySplitLibraryDiscovery(root);
             verifyValidationAndCommands(root);
+            verifyOptionalAgentComposition(root);
             verifyChildLaunch(root);
             if (arguments.length == 2) verifyPublishedPackage(Path.of(arguments[0]), Path.of(arguments[1]));
+            if (arguments.length >= 3) verifyRealZombieBuddy(root, Path.of(arguments[2]));
             System.out.println("launcher verification passed");
         } finally {
             deleteRecursively(root);
@@ -170,6 +173,7 @@ public final class LauncherVerifier {
             ? "@echo off\r\nset JAVA_TOOL_OPTIONS > \"" + output + "\"\r\nexit /b 0\r\n"
             : "#!/bin/sh\nprintf '%s' \"$JAVA_TOOL_OPTIONS\" > '" + output + "'\n");
         Path agent = game.resolve("Mod Folder With Spaces/knox-agent-test.jar");
+        installZombieBuddy(game, platform);
         String originalHome = System.getProperty("user.home");
         String originalOptions = System.getenv("JAVA_TOOL_OPTIONS");
         try {
@@ -187,13 +191,120 @@ public final class LauncherVerifier {
                     + new String(diagnostic.getInputStream().readAllBytes(), StandardCharsets.UTF_8));
             }
             require(finished, "native child launch timed out");
-            require(Files.readString(output).contains("-javaagent:\"" + agent.toAbsolutePath() + "\"=pz-game"),
+            String childOptions = Files.readString(output);
+            require(childOptions.contains("-javaagent:\"" + agent.toAbsolutePath() + "\"=pz-game"),
                 "child lost or split the agent path");
+            String expectedZombieBuddy = platform == Platform.WINDOWS
+                ? "-agentlib:zbNative" : "-javaagent:\"";
+            require(childOptions.contains(expectedZombieBuddy), "child lost optional ZombieBuddy agent");
+            require(childOptions.indexOf(expectedZombieBuddy) < childOptions.indexOf("knox-agent-test.jar"),
+                "ZombieBuddy was not initialized before Knox");
             require(java.util.Objects.equals(originalOptions, System.getenv("JAVA_TOOL_OPTIONS")),
                 "launch changed parent environment");
         } finally {
             System.setProperty("user.home", originalHome);
         }
+    }
+
+    private static void verifyOptionalAgentComposition(Path root) throws Exception {
+        Path game = root.resolve("Agent Composition Game");
+        Path knox = root.resolve("Knox Mod/knox-agent-test.jar");
+        Files.createDirectories(game);
+        Files.createDirectories(knox.getParent());
+        Files.writeString(knox, "fixture");
+        for (Platform platform : Platform.values()) {
+            LauncherInstallation installation = new LauncherInstallation(
+                root, game, root, root, knox, game.resolve("launcher"), platform
+            );
+            String absent = GameLauncher.toolOptions(installation, "-Dexisting=value");
+            require(absent.startsWith("-Dexisting=value ") && absent.contains("knox-agent-test.jar")
+                && !absent.toLowerCase().contains("zombiebuddy"),
+                platform + " made absent ZombieBuddy a dependency or lost inherited options");
+            installZombieBuddy(game, platform);
+            String composed = GameLauncher.toolOptions(installation, "-Dexisting=value");
+            String marker = platform == Platform.WINDOWS ? "-agentlib:zbNative" : "ZombieBuddy.jar";
+            require(composed.startsWith("-Dexisting=value ") && composed.contains(marker),
+                platform + " did not compose installed ZombieBuddy");
+            require(composed.indexOf(marker) < composed.indexOf("knox-agent-test.jar"),
+                platform + " agent order is wrong");
+            String custom = platform == Platform.WINDOWS
+                ? "-agentlib:zbNative=verbosity=2" : "-javaagent:\"ZombieBuddy.jar\"=verbosity=2";
+            String preserved = GameLauncher.toolOptions(installation, custom);
+            require(preserved.startsWith(custom + " ") && preserved.indexOf(marker) == preserved.lastIndexOf(marker),
+                platform + " duplicated or replaced user ZombieBuddy options");
+            if (platform == Platform.WINDOWS) {
+                Files.writeString(game.resolve("ProjectZomboid64.json"),
+                    "{\"vmArgs\":[\"-Xmx3072m\",\"-agentlib:zbNative=verbosity=2,policy=deny-new\"]}");
+                String jsonOptions = GameLauncher.toolOptions(installation, "");
+                require(jsonOptions.startsWith("-agentlib:zbNative=verbosity=2,policy=deny-new "),
+                    "ZombieBuddy options from the normal JSON launch were not carried into Knox launch");
+                Files.delete(game.resolve("ProjectZomboid64.json"));
+            }
+            Path configuredLauncher = game.resolve(platform == Platform.WINDOWS ? "ProjectZomboid64.bat" : "projectzomboid.sh");
+            Files.writeString(configuredLauncher, platform == Platform.WINDOWS
+                ? "SET _JAVA_OPTIONS=-agentlib:zbNative" : "java -javaagent:ZombieBuddy.jar");
+            LauncherInstallation configured = new LauncherInstallation(
+                root, game, root, root, knox, configuredLauncher, platform
+            );
+            String notDuplicated = GameLauncher.toolOptions(configured, "");
+            require(!notDuplicated.contains(marker) && notDuplicated.contains("knox-agent-test.jar"),
+                platform + " duplicated an agent already owned by the game launcher");
+            Files.delete(configuredLauncher);
+            removeZombieBuddy(game, platform);
+        }
+        expectFailure(() -> GameLauncher.toolOptions(new LauncherInstallation(
+            root, game, root, root, knox, game.resolve("launcher"), Platform.WINDOWS
+        ), "-javaagent:\"C:\\A Folder\\knox-agent-old.jar\"=pz-game"), "already present");
+        Files.writeString(game.resolve("zbNative.dll"), "partial");
+        String partial = GameLauncher.toolOptions(new LauncherInstallation(
+            root, game, root, root, knox, game.resolve("launcher"), Platform.WINDOWS
+        ), "");
+        require(!partial.contains("zbNative"), "partial external install was activated");
+    }
+
+    private static void verifyRealZombieBuddy(Path root, Path workshopLibs) throws Exception {
+        Path sourceJar = workshopLibs.resolve("ZombieBuddy.jar");
+        Path sourceDll = workshopLibs.resolve("zbNative.dll");
+        require(Files.isRegularFile(sourceJar) && Files.isRegularFile(sourceDll),
+            "installed Workshop reference is missing ZombieBuddy agents");
+        Path game = root.resolve("Real ZombieBuddy Game");
+        Files.createDirectories(game);
+        Files.copy(sourceJar, game.resolve("ZombieBuddy.jar"));
+        Files.copy(sourceDll, game.resolve("zbNative.dll"));
+        Path knox = root.resolve("Real ZombieBuddy Knox/knox-agent-test.jar");
+        Files.createDirectories(knox.getParent()); Files.writeString(knox, "fixture");
+        LauncherInstallation installation = new LauncherInstallation(
+            root, game, root, root, knox, game.resolve("ProjectZomboid64.bat"), Platform.WINDOWS
+        );
+        String options = GameLauncher.toolOptions(installation, "-Dpreserved=1");
+        require(options.startsWith("-Dpreserved=1 -agentlib:zbNative ")
+            && options.endsWith("knox-agent-test.jar\"=pz-game"),
+            "real ZombieBuddy manifest/native pair was not composed before Knox");
+        try (JarFile actual = new JarFile(sourceJar.toFile())) {
+            System.out.println("actual ZombieBuddy compatibility passed version="
+                + actual.getManifest().getMainAttributes().getValue("Implementation-Version"));
+        }
+    }
+
+    private static void installZombieBuddy(Path game, Platform platform) throws Exception {
+        Path jar;
+        if (platform == Platform.WINDOWS) {
+            jar = game.resolve("ZombieBuddy.jar");
+            Files.writeString(game.resolve("zbNative.dll"), "native-fixture");
+        } else if (platform == Platform.MAC) {
+            jar = game.resolve("Project Zomboid.app/Contents/Java/ZombieBuddy.jar");
+        } else {
+            jar = game.resolve("projectzomboid/ZombieBuddy.jar");
+        }
+        Files.createDirectories(jar.getParent());
+        createJar(jar, "me.zed_0xff.zombie_buddy.Agent", "test");
+    }
+
+    private static void removeZombieBuddy(Path game, Platform platform) throws IOException {
+        Files.deleteIfExists(game.resolve("zbNative.dll"));
+        Files.deleteIfExists(game.resolve("ZombieBuddy.jar"));
+        Files.deleteIfExists(game.resolve("projectzomboid/ZombieBuddy.jar"));
+        Files.deleteIfExists(game.resolve("Project Zomboid.app/Contents/Java/ZombieBuddy.jar"));
     }
 
     @FunctionalInterface
@@ -210,10 +321,15 @@ public final class LauncherVerifier {
     }
 
     private static void createAgent(Path path, String version) throws IOException {
+        createJar(path, "com.knoxsurvivors.agent.KnoxAgent", version);
+    }
+
+    private static void createJar(Path path, String premain, String version) throws IOException {
+        Files.createDirectories(path.getParent());
         Manifest manifest = new Manifest();
         Attributes attributes = manifest.getMainAttributes();
         attributes.put(Attributes.Name.MANIFEST_VERSION, "1.0");
-        attributes.putValue("Premain-Class", "com.knoxsurvivors.agent.KnoxAgent");
+        attributes.putValue("Premain-Class", premain);
         attributes.putValue("Implementation-Version", version);
         try (JarOutputStream output = new JarOutputStream(Files.newOutputStream(path), manifest)) {
             // Manifest-only test agent is enough for launcher validation.

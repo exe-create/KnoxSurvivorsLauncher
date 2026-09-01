@@ -6,6 +6,8 @@ Workshop build is uploaded and verified from a normal subscribed installation.
 1. Confirm the upload has `Contents/mods/KnoxSurvivors/42/knox-runtime.properties` and exactly one agent JAR plus checksum in `Contents/mods/KnoxSurvivors/java/`. Steam distributes the contents of `Contents`, not the parent folder.
 2. Confirm `launcherCompatibility=1` and that `runtimeVersion` matches the agent JAR manifest version.
 3. Test the staged Workshop package and launcher on Windows.
+   - If publishing ZombieBuddy compatibility, test no-install, valid install, existing
+     BAT configuration, JSON custom options, and ZombieBuddy + FastLoading live together.
 4. Commit and push launcher changes.
 5. Create and push a version tag, for example `v0.2.0-preview.1`.
 6. Wait for the GitHub Actions checks on Windows, Linux, and macOS. Tagged builds create a draft preview, not an immediately public release.

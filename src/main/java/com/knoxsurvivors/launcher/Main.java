@@ -15,6 +15,7 @@ import java.awt.Insets;
 import java.awt.RenderingHints;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -34,6 +35,7 @@ public final class Main {
     private final GameLauncher gameLauncher = new GameLauncher();
     private final JFrame window = new JFrame("Knox Survivors");
     private final JLabel status = new JLabel("Checking Steam and Workshop files…", SwingConstants.CENTER);
+    private final JCheckBox debugMode = new JCheckBox("Enable Project Zomboid Debug Mode");
     private final JButton launch = new LaunchButton();
     private LauncherInstallation installation;
 
@@ -79,6 +81,19 @@ public final class Main {
         c.gridy = 2;
         c.insets = new Insets(0, 12, 28, 12);
         panel.add(status, c);
+        debugMode.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
+        debugMode.setForeground(MUTED);
+        debugMode.setOpaque(false);
+        debugMode.setFocusPainted(false);
+        debugMode.setSelected(false);
+        debugMode.setToolTipText("Starts Project Zomboid with the standard -debug option.");
+        debugMode.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        c.gridy = 3;
+        c.fill = GridBagConstraints.NONE;
+        c.anchor = GridBagConstraints.CENTER;
+        c.insets = new Insets(0, 0, 14, 0);
+        panel.add(debugMode, c);
+
         launch.setText("PLAY KNOX SURVIVORS");
         launch.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 23));
         launch.setForeground(new Color(5, 6, 8));
@@ -86,7 +101,8 @@ public final class Main {
         launch.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         launch.setEnabled(false);
         launch.addActionListener(event -> launch());
-        c.gridy = 3;
+        c.gridy = 4;
+        c.fill = GridBagConstraints.HORIZONTAL;
         c.insets = new Insets(0, 0, 0, 0);
         panel.add(launch, c);
         return panel;
@@ -135,7 +151,7 @@ public final class Main {
             LauncherInstallation found = locator.locate();
             validator.validate(found);
             setStatus("Launching Project Zomboid…", GREEN);
-            gameLauncher.launch(found);
+            gameLauncher.launch(found, debugMode.isSelected());
             window.dispose();
         } catch (LauncherException exception) {
             setStatus("NOT READY  •  " + exception.getMessage(), new Color(235, 105, 135));

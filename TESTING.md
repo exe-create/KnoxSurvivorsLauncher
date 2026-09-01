@@ -77,3 +77,12 @@ publishing a launcher update:
 
 Subscription without ZombieBuddy's separate installation is expected to remain unavailable;
 the Knox launcher does not silently execute native code directly from a Workshop subscription.
+
+# Debug mode
+
+1. Leave **Enable Project Zomboid Debug Mode** unchecked and launch. Confirm the normal game
+   starts without debug tools.
+2. Check it and launch again. Confirm Project Zomboid starts with its normal debug tools and
+   the launcher log reports `debug=true`.
+3. Confirm both launches still report the Knox bridge ready. If ZombieBuddy is installed,
+   also confirm its Lua global remains available in both modes.

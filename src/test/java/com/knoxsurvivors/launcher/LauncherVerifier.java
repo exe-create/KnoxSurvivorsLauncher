@@ -115,6 +115,10 @@ public final class LauncherVerifier {
             List<String> command = GameLauncher.command(installation);
             require(command.stream().anyMatch(value -> value.contains(executable.toString())),
                 platform + " launch command lost game executable");
+            require(!command.contains("-debug"), platform + " enabled debug mode by default");
+            List<String> debugCommand = GameLauncher.command(installation, true);
+            require(debugCommand.get(debugCommand.size() - 1).equals("-debug"),
+                platform + " did not pass the standard debug argument");
         }
         LauncherInstallation installation = new LauncherInstallation(
             root, game, workshop, mod, jar, game.resolve("ProjectZomboid64.bat"), Platform.WINDOWS
@@ -168,10 +172,13 @@ public final class LauncherVerifier {
         Files.createDirectories(game);
         Platform platform = Platform.current();
         Path output = game.resolve("child-environment.txt");
+        Path argumentOutput = game.resolve("child-argument.txt");
         Path executable = game.resolve(platform == Platform.WINDOWS ? "ProjectZomboid64.bat" : "projectzomboid.sh");
         Files.writeString(executable, platform == Platform.WINDOWS
-            ? "@echo off\r\nset JAVA_TOOL_OPTIONS > \"" + output + "\"\r\nexit /b 0\r\n"
-            : "#!/bin/sh\nprintf '%s' \"$JAVA_TOOL_OPTIONS\" > '" + output + "'\n");
+            ? "@echo off\r\nset JAVA_TOOL_OPTIONS > \"" + output + "\"\r\n"
+                + "echo %1> \"" + argumentOutput + "\"\r\nexit /b 0\r\n"
+            : "#!/bin/sh\nprintf '%s' \"$JAVA_TOOL_OPTIONS\" > '" + output + "'\n"
+                + "printf '%s' \"$1\" > '" + argumentOutput + "'\n");
         Path agent = game.resolve("Mod Folder With Spaces/knox-agent-test.jar");
         installZombieBuddy(game, platform);
         String originalHome = System.getProperty("user.home");
@@ -180,7 +187,7 @@ public final class LauncherVerifier {
             System.setProperty("user.home", root.toString());
             Process child = new GameLauncher().launch(new LauncherInstallation(
                 root, game, root, root, agent, executable, platform
-            ));
+            ), true);
             boolean finished = child.waitFor(10, java.util.concurrent.TimeUnit.SECONDS);
             if (!finished) child.destroyForcibly();
             if (finished && child.exitValue() != 0) {
@@ -199,6 +206,8 @@ public final class LauncherVerifier {
             require(childOptions.contains(expectedZombieBuddy), "child lost optional ZombieBuddy agent");
             require(childOptions.indexOf(expectedZombieBuddy) < childOptions.indexOf("knox-agent-test.jar"),
                 "ZombieBuddy was not initialized before Knox");
+            require(Files.readString(argumentOutput).trim().equals("-debug"),
+                "native child launch lost the debug argument");
             require(java.util.Objects.equals(originalOptions, System.getenv("JAVA_TOOL_OPTIONS")),
                 "launch changed parent environment");
         } finally {

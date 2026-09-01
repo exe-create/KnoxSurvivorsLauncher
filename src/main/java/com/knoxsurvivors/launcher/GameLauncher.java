@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 final class GameLauncher {
-    Process launch(LauncherInstallation installation) throws LauncherException {
-        List<String> command = command(installation);
+    Process launch(LauncherInstallation installation, boolean debugMode) throws LauncherException {
+        List<String> command = command(installation, debugMode);
         ProcessBuilder builder = new ProcessBuilder(command)
             .directory(installation.gameDirectory().toFile())
             .redirectErrorStream(true)
@@ -20,7 +20,8 @@ final class GameLauncher {
             LauncherLog.write("launched platform=" + installation.platform()
                 + " game=" + installation.gameDirectory()
                 + " workshop=" + installation.workshopDirectory()
-                + " zombieBuddy=" + zombieBuddy.state());
+                + " zombieBuddy=" + zombieBuddy.state()
+                + " debug=" + debugMode);
             return process;
         } catch (IOException exception) {
             throw new LauncherException(
@@ -60,6 +61,10 @@ final class GameLauncher {
     }
 
     static List<String> command(LauncherInstallation installation) {
+        return command(installation, false);
+    }
+
+    static List<String> command(LauncherInstallation installation, boolean debugMode) {
         List<String> command = new ArrayList<>();
         if (installation.platform() == Platform.WINDOWS) {
             command.add(System.getenv().getOrDefault("ComSpec", "cmd.exe"));
@@ -74,6 +79,7 @@ final class GameLauncher {
         } else {
             command.add(installation.gameLauncher().toAbsolutePath().toString());
         }
+        if (debugMode) command.add("-debug");
         return command;
     }
 }

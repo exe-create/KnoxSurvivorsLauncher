@@ -11,6 +11,9 @@ KNOX SURVIVORS LAUNCHER
 6. Press PLAY KNOX SURVIVORS.
 7. In Project Zomboid, make sure Knox Survivors is enabled for your save.
 
+Optional debug mode: select "Enable Project Zomboid Debug Mode" before pressing Play.
+This passes the normal -debug option to Project Zomboid and is off by default.
+
 Always start Project Zomboid through this launcher when using the IsoPlayer rebuild.
 
 OPTIONAL ZOMBIEBUDDY COMPATIBILITY

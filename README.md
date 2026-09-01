@@ -23,6 +23,10 @@ game, modify Steam, request administrator access, or set permanent environment v
 6. Press **PLAY KNOX SURVIVORS**.
 7. In Project Zomboid, enable Knox Survivors for the save you want to use.
 
+To use Project Zomboid's normal debug tools, select **Enable Project Zomboid Debug Mode**
+before pressing Play. It is off by default and simply passes the standard `-debug` argument
+to the existing game launcher.
+
 The launcher uses Project Zomboid's bundled Java runtime. A separate Java 17 installation
 is not required.
 

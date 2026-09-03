@@ -64,11 +64,12 @@ final class GameLauncher {
             || (value.contains("-javaagent:") && value.contains("zombiebuddy.jar"));
     }
 
-    static List<String> command(LauncherInstallation installation) {
+    static List<String> command(LauncherInstallation installation) throws LauncherException {
         return command(installation, false, "");
     }
 
-    static List<String> command(LauncherInstallation installation, boolean debugMode) {
+    static List<String> command(LauncherInstallation installation, boolean debugMode)
+        throws LauncherException {
         return command(installation, debugMode, "");
     }
 
@@ -109,7 +110,7 @@ final class GameLauncher {
                 } else {
                     token.append(ch);
                 }
-            } else if (ch == '\"' || ch == '\'') {
+            } else if (ch == '"' || ch == '\'') {
                 quoted = true;
                 quote = ch;
             } else if (Character.isWhitespace(ch)) {

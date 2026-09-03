@@ -6,7 +6,12 @@ import java.util.List;
 
 final class GameLauncher {
     Process launch(LauncherInstallation installation, boolean debugMode) throws LauncherException {
-        List<String> command = command(installation, debugMode);
+        return launch(installation, debugMode, "");
+    }
+
+    Process launch(LauncherInstallation installation, boolean debugMode, String customOptions)
+        throws LauncherException {
+        List<String> command = command(installation, debugMode, customOptions);
         ProcessBuilder builder = new ProcessBuilder(command)
             .directory(installation.gameDirectory().toFile())
             .redirectErrorStream(true)
@@ -21,7 +26,8 @@ final class GameLauncher {
                 + " game=" + installation.gameDirectory()
                 + " workshop=" + installation.workshopDirectory()
                 + " zombieBuddy=" + zombieBuddy.state()
-                + " debug=" + debugMode);
+                + " debug=" + debugMode
+                + " customOptions=" + (customOptions == null || customOptions.isBlank() ? "none" : "set"));
             return process;
         } catch (IOException exception) {
             throw new LauncherException(
@@ -41,8 +47,6 @@ final class GameLauncher {
         List<String> additions = new ArrayList<>();
         ZombieBuddyCompatibility.Result zombieBuddy = ZombieBuddyCompatibility.inspect(installation);
         if (zombieBuddy.enabled() && !containsZombieBuddyAgent(existing)) {
-            // Framework agent first: both premains complete before game main, and
-            // ZombieBuddy can establish its transformer/exposer before Knox starts.
             additions.add(zombieBuddy.option());
         }
         additions.add("-javaagent:\"" + installation.agentJar().toAbsolutePath() + "\"=pz-game");
@@ -61,17 +65,21 @@ final class GameLauncher {
     }
 
     static List<String> command(LauncherInstallation installation) {
-        return command(installation, false);
+        return command(installation, false, "");
     }
 
     static List<String> command(LauncherInstallation installation, boolean debugMode) {
+        return command(installation, debugMode, "");
+    }
+
+    static List<String> command(LauncherInstallation installation, boolean debugMode, String customOptions)
+        throws LauncherException {
         List<String> command = new ArrayList<>();
         if (installation.platform() == Platform.WINDOWS) {
             command.add(System.getenv().getOrDefault("ComSpec", "cmd.exe"));
             command.add("/d");
             command.add("/s");
             command.add("/c");
-            // cmd /s strips the outer quotes; retain the inner pair around spaced paths.
             command.add("\"\"" + installation.gameLauncher().toAbsolutePath() + "\"\"");
         } else if (installation.gameLauncher().getFileName().toString().endsWith(".sh")) {
             command.add("/bin/sh");
@@ -80,6 +88,41 @@ final class GameLauncher {
             command.add(installation.gameLauncher().toAbsolutePath().toString());
         }
         if (debugMode) command.add("-debug");
+        command.addAll(parseLaunchOptions(customOptions));
         return command;
+    }
+
+    static List<String> parseLaunchOptions(String value) throws LauncherException {
+        List<String> result = new ArrayList<>();
+        if (value == null || value.isBlank()) return result;
+        StringBuilder token = new StringBuilder();
+        boolean quoted = false;
+        char quote = 0;
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            if (quoted) {
+                if (ch == quote) {
+                    quoted = false;
+                } else if (ch == '\\' && i + 1 < value.length() && value.charAt(i + 1) == quote) {
+                    token.append(quote);
+                    i++;
+                } else {
+                    token.append(ch);
+                }
+            } else if (ch == '\"' || ch == '\'') {
+                quoted = true;
+                quote = ch;
+            } else if (Character.isWhitespace(ch)) {
+                if (token.length() > 0) {
+                    result.add(token.toString());
+                    token.setLength(0);
+                }
+            } else {
+                token.append(ch);
+            }
+        }
+        if (quoted) throw new LauncherException("Custom launch options contain an unmatched quote.");
+        if (token.length() > 0) result.add(token.toString());
+        return result;
     }
 }

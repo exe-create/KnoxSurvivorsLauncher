@@ -11,6 +11,8 @@ $steamPath = $null
 try {
     $steamPath = (Get-ItemProperty -LiteralPath 'HKCU:\Software\Valve\Steam' -ErrorAction Stop).SteamPath
 } catch {}
+
+# Prefer Steam's configured install first, then common install locations.
 foreach ($candidate in @(
     $env:KNOX_STEAM_ROOT,
     $steamPath,
@@ -18,18 +20,35 @@ foreach ($candidate in @(
     (Join-Path $env:ProgramFiles 'Steam')
 )) {
     if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path -LiteralPath $candidate)) {
-        $steamRoots.Add([IO.Path]::GetFullPath($candidate))
+        $full = [IO.Path]::GetFullPath($candidate)
+        if (-not $steamRoots.Contains($full)) { $steamRoots.Add($full) }
+    }
+}
+
+# Fallback for Steam/game installs on D:, E:, etc. This avoids requiring users
+# to edit the launcher script when Steam's registry entry is missing or stale.
+foreach ($drive in Get-PSDrive -PSProvider FileSystem -ErrorAction SilentlyContinue) {
+    foreach ($relative in @('Steam', 'SteamLibrary', 'Program Files (x86)\Steam', 'Program Files\Steam')) {
+        $candidate = Join-Path $drive.Root $relative
+        if (Test-Path -LiteralPath (Join-Path $candidate 'steamapps')) {
+            $full = [IO.Path]::GetFullPath($candidate)
+            if (-not $steamRoots.Contains($full)) { $steamRoots.Add($full) }
+        }
     }
 }
 
 $libraries = [System.Collections.Generic.List[string]]::new()
 foreach ($root in $steamRoots) {
-    $libraries.Add($root)
+    if (-not $libraries.Contains($root)) { $libraries.Add($root) }
     $vdf = Join-Path $root 'steamapps\libraryfolders.vdf'
     if (Test-Path -LiteralPath $vdf) {
         foreach ($line in Get-Content -LiteralPath $vdf) {
             if ($line -match '"path"\s+"([^"]+)"') {
-                $libraries.Add(($Matches[1] -replace '\\\\', '\'))
+                $library = ($Matches[1] -replace '\\\\', '\')
+                if (Test-Path -LiteralPath $library) {
+                    $full = [IO.Path]::GetFullPath($library)
+                    if (-not $libraries.Contains($full)) { $libraries.Add($full) }
+                }
             }
         }
     }
@@ -37,14 +56,28 @@ foreach ($root in $steamRoots) {
 
 $javaw = $null
 foreach ($library in $libraries) {
-    $candidate = Join-Path $library 'steamapps\common\ProjectZomboid\jre64\bin\javaw.exe'
-    if (Test-Path -LiteralPath $candidate) {
-        $javaw = $candidate
+    $game = Join-Path $library 'steamapps\common\ProjectZomboid'
+    if (-not (Test-Path -LiteralPath $game)) { continue }
+
+    foreach ($relative in @('jre64\bin\javaw.exe', 'jre\bin\javaw.exe')) {
+        $candidate = Join-Path $game $relative
+        if (Test-Path -LiteralPath $candidate) {
+            $javaw = $candidate
+            break
+        }
+    }
+    if ($null -ne $javaw) { break }
+
+    $found = Get-ChildItem -LiteralPath $game -Filter javaw.exe -File -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.DirectoryName -match '[\\/]bin$' } |
+        Select-Object -First 1
+    if ($null -ne $found) {
+        $javaw = $found.FullName
         break
     }
 }
 if ($null -eq $javaw) {
-    throw 'Project Zomboid bundled Java was not found. Install or verify Project Zomboid through Steam.'
+    throw 'Project Zomboid bundled Java was not found. The launcher checked Steam libraries on all local drives. Install or verify Project Zomboid through Steam.'
 }
 
 if ($steamRoots.Count -gt 0) {

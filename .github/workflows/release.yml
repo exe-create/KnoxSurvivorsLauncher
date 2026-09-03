@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - fix/secondary-drives-and-launch-options
     tags:
       - "v*"
   workflow_dispatch:
@@ -48,6 +49,30 @@ jobs:
         with:
           name: KnoxSurvivorsLauncher
           path: |
+            dist/KnoxSurvivorsLauncher-windows.zip
+            dist/KnoxSurvivorsLauncher-linux.zip
+            dist/KnoxSurvivorsLauncher-macos.zip
+            dist/SHA256SUMS.txt
+      - name: Publish secondary-drive test preview
+        if: github.ref == 'refs/heads/fix/secondary-drives-and-launch-options'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.2.2-preview.1
+          target_commitish: fix/secondary-drives-and-launch-options
+          name: Knox Survivors Launcher v0.2.2 Preview 1
+          prerelease: true
+          draft: false
+          generate_release_notes: false
+          body: |
+            Test preview for secondary Steam-library drives and custom launch options.
+
+            Changes:
+            - Detects Project Zomboid/Steam libraries on D:, E:, and other local drives without editing launcher scripts.
+            - Expands bundled Java discovery for non-standard Project Zomboid layouts.
+            - Adds a remembered Custom Launch Options field for options such as `-cachedir="D:\Zomboid"`.
+
+            This is a preview build for testing before the changes are merged into main.
+          files: |
             dist/KnoxSurvivorsLauncher-windows.zip
             dist/KnoxSurvivorsLauncher-linux.zip
             dist/KnoxSurvivorsLauncher-macos.zip

@@ -1,7 +1,6 @@
 package com.knoxsurvivors.launcher;
 
 import java.awt.BasicStroke;
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
@@ -13,6 +12,7 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.RenderingHints;
+import java.util.prefs.Preferences;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -20,6 +20,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
@@ -30,17 +31,20 @@ public final class Main {
     private static final Color GREEN = new Color(188, 255, 0);
     private static final Color PURPLE = new Color(165, 65, 255);
     private static final Color MUTED = new Color(184, 188, 194);
+    private static final String PREF_LAUNCH_OPTIONS = "customLaunchOptions";
     private final SteamLocator locator = new SteamLocator();
     private final InstallationValidator validator = new InstallationValidator();
     private final GameLauncher gameLauncher = new GameLauncher();
+    private final Preferences preferences = Preferences.userNodeForPackage(Main.class);
     private final JFrame window = new JFrame("Knox Survivors");
     private final JLabel status = new JLabel("Checking Steam and Workshop files…", SwingConstants.CENTER);
     private final JCheckBox debugMode = new JCheckBox("Enable Project Zomboid Debug Mode");
+    private final JTextField launchOptions = new JTextField();
     private final JButton launch = new LaunchButton();
     private LauncherInstallation installation;
 
     public static void main(String[] arguments) {
-        LauncherLog.write("start version=0.2.1 os=" + System.getProperty("os.name")
+        LauncherLog.write("start version=0.2.2-preview.1 os=" + System.getProperty("os.name")
             + " java=" + System.getProperty("java.version"));
         SwingUtilities.invokeLater(() -> {
             UIManager.put("OptionPane.background", BACKGROUND);
@@ -62,25 +66,29 @@ public final class Main {
 
     private JPanel content() {
         JPanel panel = new BorderedPanel(new GridBagLayout());
-        panel.setPreferredSize(new Dimension(720, 400));
-        panel.setBorder(BorderFactory.createEmptyBorder(34, 54, 34, 54));
+        panel.setPreferredSize(new Dimension(720, 470));
+        panel.setBorder(BorderFactory.createEmptyBorder(30, 54, 30, 54));
         GridBagConstraints c = new GridBagConstraints();
         c.gridx = 0;
         c.weightx = 1;
         c.fill = GridBagConstraints.HORIZONTAL;
+
         JLabel title = label("KNOX SURVIVORS", 34, Font.BOLD, GREEN);
         c.gridy = 0;
         c.insets = new Insets(8, 0, 0, 0);
         panel.add(title, c);
+
         JLabel subtitle = label("PROJECT ZOMBOID 42.20", 13, Font.PLAIN, new Color(199, 170, 255));
         c.gridy = 1;
-        c.insets = new Insets(2, 0, 34, 0);
+        c.insets = new Insets(2, 0, 26, 0);
         panel.add(subtitle, c);
+
         status.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
         status.setForeground(MUTED);
         c.gridy = 2;
-        c.insets = new Insets(0, 12, 28, 12);
+        c.insets = new Insets(0, 12, 18, 12);
         panel.add(status, c);
+
         debugMode.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
         debugMode.setForeground(MUTED);
         debugMode.setOpaque(false);
@@ -91,8 +99,28 @@ public final class Main {
         c.gridy = 3;
         c.fill = GridBagConstraints.NONE;
         c.anchor = GridBagConstraints.CENTER;
-        c.insets = new Insets(0, 0, 14, 0);
+        c.insets = new Insets(0, 0, 12, 0);
         panel.add(debugMode, c);
+
+        JLabel optionsLabel = label("CUSTOM LAUNCH OPTIONS (optional)", 12, Font.BOLD, MUTED);
+        c.gridy = 4;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.insets = new Insets(0, 0, 6, 0);
+        panel.add(optionsLabel, c);
+
+        launchOptions.setText(preferences.get(PREF_LAUNCH_OPTIONS, ""));
+        launchOptions.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        launchOptions.setForeground(Color.WHITE);
+        launchOptions.setBackground(new Color(20, 22, 26));
+        launchOptions.setCaretColor(GREEN);
+        launchOptions.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(74, 78, 86)),
+            BorderFactory.createEmptyBorder(7, 9, 7, 9)
+        ));
+        launchOptions.setToolTipText("Same idea as Steam launch options, for example: -cachedir=\"D:\\Zomboid\"");
+        c.gridy = 5;
+        c.insets = new Insets(0, 18, 16, 18);
+        panel.add(launchOptions, c);
 
         launch.setText("PLAY KNOX SURVIVORS");
         launch.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 23));
@@ -101,8 +129,7 @@ public final class Main {
         launch.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         launch.setEnabled(false);
         launch.addActionListener(event -> launch());
-        c.gridy = 4;
-        c.fill = GridBagConstraints.HORIZONTAL;
+        c.gridy = 6;
         c.insets = new Insets(0, 0, 0, 0);
         panel.add(launch, c);
         return panel;
@@ -150,8 +177,11 @@ public final class Main {
         try {
             LauncherInstallation found = locator.locate();
             validator.validate(found);
+            String custom = launchOptions.getText().trim();
+            GameLauncher.parseLaunchOptions(custom);
+            preferences.put(PREF_LAUNCH_OPTIONS, custom);
             setStatus("Launching Project Zomboid…", GREEN);
-            gameLauncher.launch(found, debugMode.isSelected());
+            gameLauncher.launch(found, debugMode.isSelected(), custom);
             window.dispose();
         } catch (LauncherException exception) {
             setStatus("NOT READY  •  " + exception.getMessage(), new Color(235, 105, 135));

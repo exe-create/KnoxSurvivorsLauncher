@@ -23,9 +23,26 @@ game, modify Steam, request administrator access, or set permanent environment v
 6. Press **PLAY KNOX SURVIVORS**.
 7. In Project Zomboid, enable Knox Survivors for the save you want to use.
 
+On Windows, the launcher checks Steam's configured library list and also looks for common
+Steam/SteamLibrary locations on other local drives. Project Zomboid may therefore live on
+`D:`, `E:`, or another Steam library drive without editing the launcher scripts.
+
 To use Project Zomboid's normal debug tools, select **Enable Project Zomboid Debug Mode**
 before pressing Play. It is off by default and simply passes the standard `-debug` argument
 to the existing game launcher.
+
+### Custom launch options
+
+The launcher includes a **Custom Launch Options** field for options you would normally place
+in Steam's Project Zomboid launch-options box. The value is remembered for later launches.
+For example, a player using a custom Project Zomboid data folder can enter:
+
+```text
+-cachedir="D:\Zomboid"
+```
+
+This is useful when a normal Steam launch depends on a custom cache/profile directory for
+saves, mods, logs, or other user data.
 
 The launcher uses Project Zomboid's bundled Java runtime. A separate Java 17 installation
 is not required.

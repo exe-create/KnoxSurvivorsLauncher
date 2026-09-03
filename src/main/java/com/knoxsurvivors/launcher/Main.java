@@ -44,7 +44,7 @@ public final class Main {
     private LauncherInstallation installation;
 
     public static void main(String[] arguments) {
-        LauncherLog.write("start version=0.2.1 os=" + System.getProperty("os.name")
+        LauncherLog.write("start version=0.2.2-preview.1 os=" + System.getProperty("os.name")
             + " java=" + System.getProperty("java.version"));
         SwingUtilities.invokeLater(() -> {
             UIManager.put("OptionPane.background", BACKGROUND);

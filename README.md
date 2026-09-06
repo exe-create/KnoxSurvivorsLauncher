@@ -133,3 +133,12 @@ This repository is publicly visible but is not open source. Official releases ma
 downloaded and used with Knox Survivors. No permission is granted to copy, modify,
 redistribute, repackage, publish, or reuse the source without written permission. See
 [LICENSE.md](LICENSE.md).
+# Configured game memory
+
+On Windows, the launcher prefers `ProjectZomboid64.exe`, which uses the normal
+`ProjectZomboid64.json` settings, including your configured `-Xmx` memory limit.
+Knox does not change that allocation or allocate all installed physical RAM.
+If the native executable is missing, it falls back to the game's alternate BAT,
+which uses the memory value written in that BAT. Verify the game through Steam
+to restore the normal executable. Native executable arguments are passed directly;
+the two-option limit applies only to the BAT fallback.

@@ -58,6 +58,18 @@ public final class LauncherVerifier {
         require(found.workshopDirectory().equals(workshop.toAbsolutePath().normalize()),
             "independent Workshop root was not combined with the game root");
         new InstallationValidator().validate(found);
+        Path nativeLauncher = game.resolve("ProjectZomboid64.exe");
+        Files.writeString(nativeLauncher, "fixture");
+        Path config = game.resolve("ProjectZomboid64.json");
+        String configured = "{\"vmArgs\":[\"-Xmx8192m\"]}";
+        Files.writeString(config, configured);
+        LauncherInstallation nativeFound = new SteamLocator().locateFromRoots(
+            List.of(gameRoot, workshopRoot), Platform.WINDOWS);
+        require(nativeFound.gameLauncher().equals(nativeLauncher), "native configured launcher must precede alternate BAT");
+        List<String> nativeCommand = GameLauncher.command(nativeFound, true, "-novoip -nosound");
+        require(nativeCommand.equals(List.of(nativeLauncher.toString(), "-debug", "-novoip", "-nosound")),
+            "native launcher must receive direct arguments without batch limits or heap overrides");
+        require(Files.readString(config).equals(configured), "user memory configuration must remain untouched");
     }
 
     private static void verifySplitLibraryDiscovery(Path root) throws Exception {

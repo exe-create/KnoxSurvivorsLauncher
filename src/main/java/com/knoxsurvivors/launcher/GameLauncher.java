@@ -83,6 +83,14 @@ final class GameLauncher {
         List<String> gameArguments = new ArrayList<>();
         if (debugMode) gameArguments.add("-debug");
         gameArguments.addAll(parseLaunchOptions(customOptions));
+        if (installation.platform() == Platform.WINDOWS
+                && installation.gameLauncher().getFileName().toString().equalsIgnoreCase("ProjectZomboid64.exe")) {
+            // The native launcher reads ProjectZomboid64.json, including the
+            // user's heap configuration. The alternate BAT hard-codes 3072m.
+            command.add(installation.gameLauncher().toAbsolutePath().toString());
+            command.addAll(gameArguments);
+            return command;
+        }
         if (installation.platform() == Platform.WINDOWS && gameArguments.size() > 2) {
             throw new LauncherException(
                 "Project Zomboid's Windows launcher accepts at most two game options. "

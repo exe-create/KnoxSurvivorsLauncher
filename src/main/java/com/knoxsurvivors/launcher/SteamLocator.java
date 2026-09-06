@@ -175,6 +175,7 @@ final class SteamLocator {
     private static Path gameLauncher(Path game, Platform platform) throws LauncherException {
         List<Path> candidates = new ArrayList<>();
         if (platform == Platform.WINDOWS) {
+            candidates.add(game.resolve("ProjectZomboid64.exe"));
             candidates.add(game.resolve("ProjectZomboid64.bat"));
         } else {
             candidates.add(game.resolve("projectzomboid.sh"));

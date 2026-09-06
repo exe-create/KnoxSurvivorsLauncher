@@ -53,6 +53,7 @@ jobs:
             dist/KnoxSurvivorsLauncher-linux.zip
             dist/KnoxSurvivorsLauncher-macos.zip
             dist/SHA256SUMS.txt
+            dist/KnoxSurvivorsLauncher.jar
       - name: Publish secondary-drive test preview
         if: github.ref == 'refs/heads/fix/secondary-drives-and-launch-options'
         uses: softprops/action-gh-release@v2
@@ -77,6 +78,7 @@ jobs:
             dist/KnoxSurvivorsLauncher-linux.zip
             dist/KnoxSurvivorsLauncher-macos.zip
             dist/SHA256SUMS.txt
+            dist/KnoxSurvivorsLauncher.jar
       - name: Publish tagged release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
@@ -95,3 +97,4 @@ jobs:
             dist/KnoxSurvivorsLauncher-linux.zip
             dist/KnoxSurvivorsLauncher-macos.zip
             dist/SHA256SUMS.txt
+            dist/KnoxSurvivorsLauncher.jar

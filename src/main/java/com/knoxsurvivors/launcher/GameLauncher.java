@@ -76,20 +76,58 @@ final class GameLauncher {
     static List<String> command(LauncherInstallation installation, boolean debugMode, String customOptions)
         throws LauncherException {
         List<String> command = new ArrayList<>();
+        if (installation.platform() == Platform.WINDOWS && customOptions != null
+                && customOptions.chars().anyMatch(ch -> ch < 32 && ch != '\t')) {
+            throw new LauncherException("Windows launch options cannot contain control characters.");
+        }
+        List<String> gameArguments = new ArrayList<>();
+        if (debugMode) gameArguments.add("-debug");
+        gameArguments.addAll(parseLaunchOptions(customOptions));
+        if (installation.platform() == Platform.WINDOWS && gameArguments.size() > 2) {
+            throw new LauncherException(
+                "Project Zomboid's Windows launcher accepts at most two game options. "
+                    + "Debug mode counts as one option. Remove the extra option and try again."
+            );
+        }
         if (installation.platform() == Platform.WINDOWS) {
+            // These arguments pass through cmd.exe and then the game's %1/%2 batch
+            // expansion. ProcessBuilder's executable quoting alone cannot protect them.
+            for (String argument : gameArguments) {
+                if (argument.chars().anyMatch(ch -> "&|<>^%!\"".indexOf(ch) >= 0)) {
+                    throw new LauncherException(
+                        "Windows launch options cannot contain shell characters (& | < > ^ % ! or literal quotes). "
+                            + "Use a literal path instead of environment variables."
+                    );
+                }
+            }
             command.add(System.getenv().getOrDefault("ComSpec", "cmd.exe"));
             command.add("/d");
+            command.add("/v:off");
             command.add("/s");
             command.add("/c");
-            command.add("\"\"" + installation.gameLauncher().toAbsolutePath() + "\"\"");
+            String launcherPath = installation.gameLauncher().toAbsolutePath().toString();
+            if (launcherPath.chars().anyMatch(ch -> ch < 32 || "%!\"".indexOf(ch) >= 0)) {
+                throw new LauncherException("The Windows game launcher path contains unsupported shell characters.");
+            }
+            StringBuilder payload = new StringBuilder("\"\"").append(launcherPath).append('"');
+            for (String argument : gameArguments) {
+                payload.append(" \"").append(argument);
+                // The game's batch file forwards the quoted token to Java, whose
+                // Windows argument decoder consumes pairs of trailing backslashes.
+                for (int i = argument.length() - 1; i >= 0 && argument.charAt(i) == '\\'; i--) {
+                    payload.append('\\');
+                }
+                payload.append('"');
+            }
+            command.add(payload.append('"').toString());
+            return command;
         } else if (installation.gameLauncher().getFileName().toString().endsWith(".sh")) {
             command.add("/bin/sh");
             command.add(installation.gameLauncher().toAbsolutePath().toString());
         } else {
             command.add(installation.gameLauncher().toAbsolutePath().toString());
         }
-        if (debugMode) command.add("-debug");
-        command.addAll(parseLaunchOptions(customOptions));
+        command.addAll(gameArguments);
         return command;
     }
 
@@ -104,10 +142,9 @@ final class GameLauncher {
             if (quoted) {
                 if (ch == quote) {
                     quoted = false;
-                } else if (ch == '\\' && i + 1 < value.length() && value.charAt(i + 1) == quote) {
-                    token.append(quote);
-                    i++;
                 } else {
+                    // Backslashes are literal path separators, including immediately
+                    // before a closing quote in a Windows directory path.
                     token.append(ch);
                 }
             } else if (ch == '"' || ch == '\'') {

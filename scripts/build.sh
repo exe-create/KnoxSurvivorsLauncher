@@ -11,8 +11,8 @@ rm -rf "$DIST"
 mkdir -p "$CLASSES" "$TEST_CLASSES" "$DIST"
 find "$ROOT/src/main/java" -name '*.java' -print | sed 's/.*/"&"/' > "$BUILD/main-sources.txt"
 javac --release 17 -d "$CLASSES" @"$BUILD/main-sources.txt"
-jar --create --file "$ROOT/KnoxSurvivorsLauncher.jar" \
-    --main-class com.knoxsurvivors.launcher.Main -C "$CLASSES" .
+printf '%s\n' 'Manifest-Version: 1.0' 'Main-Class: com.knoxsurvivors.launcher.Main' 'Implementation-Version: 0.2.3-preview.1' 'Knox-Update-Protocol: 1' > "$BUILD/MANIFEST.MF"
+jar --create --file "$ROOT/KnoxSurvivorsLauncher.jar" --manifest "$BUILD/MANIFEST.MF" -C "$CLASSES" .
 find "$ROOT/src/test/java" -name '*.java' -print | sed 's/.*/"&"/' > "$BUILD/test-sources.txt"
 javac --release 17 -cp "$CLASSES" -d "$TEST_CLASSES" @"$BUILD/test-sources.txt"
 java -cp "$CLASSES:$TEST_CLASSES" com.knoxsurvivors.launcher.LauncherVerifier
@@ -37,3 +37,4 @@ if command -v sha256sum >/dev/null 2>&1; then
 else
     (cd "$DIST" && shasum -a 256 KnoxSurvivorsLauncher-*.zip > SHA256SUMS.txt)
 fi
+cp "$ROOT/KnoxSurvivorsLauncher.jar" "$DIST/KnoxSurvivorsLauncher.jar"

@@ -44,8 +44,28 @@ For example, a player using a custom Project Zomboid data folder can enter:
 This is useful when a normal Steam launch depends on a custom cache/profile directory for
 saves, mods, logs, or other user data.
 
+Project Zomboid's current Windows batch launcher forwards at most two game options. The Knox
+launcher rejects extras with a clear message instead of silently dropping them; Debug mode counts
+as one option. Linux and macOS do not use that Windows batch-file limit.
+
+Use single or double quotes to group an option containing spaces. Backslashes are literal,
+so a quoted directory can end in `\`. Backslash-escaped quotes are not supported; use the
+other quote style to include a literal quote on Linux/macOS. On Windows, shell operators
+(`& | < > ^`), environment-variable syntax (`%` and `!`), literal quotes within an option,
+and control characters other than tabs are rejected. Enter expanded paths such as
+`C:\Users\Gary\Zomboid` instead of `%USERPROFILE%\Zomboid`. Windows game installation paths
+containing `%` or `!` are also rejected to prevent command expansion.
+
 The launcher uses Project Zomboid's bundled Java runtime. A separate Java 17 installation
 is not required.
+
+### Launcher updates
+
+The launcher checks the public Knox Survivors Launcher releases in the background at startup.
+When a newer non-draft release is available, it can download the standalone launcher JAR,
+verify its SHA-256 checksum and release metadata, then restart into the staged copy.
+The running launcher is never overwritten. A network failure leaves the normal Play button
+available, and updates are stored under the user's `KnoxSurvivors/launcher-updates` folder.
 
 ### Optional ZombieBuddy compatibility
 

@@ -2,6 +2,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $fixtureRoot = Join-Path ([IO.Path]::GetTempPath()) ('knox-bootstrap-' + [Guid]::NewGuid())
 $originalSteamRoot = $env:KNOX_STEAM_ROOT
+$originalSteamRoots = $env:KNOX_STEAM_ROOTS
 $launchRecords = [System.Collections.Generic.List[hashtable]]::new()
 
 function Start-Process {
@@ -36,9 +37,14 @@ try {
         throw 'Windows bootstrap did not use the discovered bundled Java.'
     }
     if ($launchCapture.WindowStyle -ne 'Hidden') { throw 'Bootstrap window policy changed.' }
+    if ([string]::IsNullOrWhiteSpace($env:KNOX_STEAM_ROOTS) -or
+        -not $env:KNOX_STEAM_ROOTS.Contains($steam)) {
+        throw 'Windows bootstrap did not pass its discovered Steam roots to the launcher.'
+    }
     Write-Output 'Windows bootstrap verification passed (spaced extraction/library paths, bundled Java, hidden launch).'
 } finally {
     $env:KNOX_STEAM_ROOT = $originalSteamRoot
+    $env:KNOX_STEAM_ROOTS = $originalSteamRoots
     $resolved = [IO.Path]::GetFullPath($fixtureRoot)
     $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
     if ($resolved.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -and

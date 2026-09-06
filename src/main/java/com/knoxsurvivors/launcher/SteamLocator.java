@@ -1,6 +1,7 @@
 package com.knoxsurvivors.launcher;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -29,25 +30,29 @@ final class SteamLocator {
 
     LauncherInstallation locateFromRoots(List<Path> steamRoots, Platform platform)
         throws LauncherException {
+        Set<Path> discoveredLibraries = new LinkedHashSet<>();
+        Path primarySteam = null;
         for (Path steam : steamRoots) {
             if (!Files.isDirectory(steam)) continue;
-            List<Path> libraries = libraries(steam);
-            Path game = null;
-            Path workshop = null;
-            for (Path library : libraries) {
-                if (game == null) game = gameDirectory(library);
-                Path candidate = library.resolve("steamapps/workshop/content")
-                    .resolve(STEAM_APP_ID).resolve(WORKSHOP_ITEM_ID);
-                if (workshop == null && Files.isDirectory(candidate)) workshop = candidate;
-            }
-            if (game != null && workshop != null) {
-                Path mod = modDirectory(workshop);
-                Path agent = agentJar(workshop);
-                Path gameLauncher = gameLauncher(game, platform);
-                return new LauncherInstallation(
-                    steam, game, workshop, mod, agent, gameLauncher, platform
-                );
-            }
+            if (primarySteam == null) primarySteam = normalize(steam);
+            discoveredLibraries.addAll(libraries(steam));
+        }
+        Path game = null;
+        Path workshop = null;
+        for (Path library : discoveredLibraries) {
+            if (game == null) game = gameDirectory(library);
+            Path candidate = library.resolve("steamapps/workshop/content")
+                .resolve(STEAM_APP_ID).resolve(WORKSHOP_ITEM_ID);
+            if (workshop == null && Files.isDirectory(candidate)) workshop = candidate;
+        }
+        if (game != null && workshop != null) {
+            Path mod = modDirectory(workshop);
+            Path agent = agentJar(workshop);
+            Path gameLauncher = gameLauncher(game, platform);
+            return new LauncherInstallation(
+                primarySteam != null ? primarySteam : game,
+                game, workshop, mod, agent, gameLauncher, platform
+            );
         }
         throw new LauncherException(
             "Project Zomboid or Knox Survivors was not found. Subscribe to Workshop item "
@@ -75,6 +80,7 @@ final class SteamLocator {
 
     private static List<Path> steamCandidates(Platform platform) {
         Set<Path> candidates = new LinkedHashSet<>();
+        addList(candidates, System.getenv("KNOX_STEAM_ROOTS"));
         add(candidates, System.getenv("KNOX_STEAM_ROOT"));
         add(candidates, System.getenv("STEAM_PATH"));
         Path home = Paths.get(System.getProperty("user.home", "."));
@@ -196,6 +202,11 @@ final class SteamLocator {
 
     private static void add(Set<Path> paths, String value) {
         if (value != null && !value.isBlank()) paths.add(normalize(Paths.get(value)));
+    }
+
+    private static void addList(Set<Path> paths, String values) {
+        if (values == null || values.isBlank()) return;
+        for (String value : values.split(Pattern.quote(File.pathSeparator))) add(paths, value);
     }
 
     private static void add(Set<Path> paths, String parent, String child) {

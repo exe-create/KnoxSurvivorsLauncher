@@ -82,6 +82,7 @@ if ($null -eq $javaw) {
 
 if ($steamRoots.Count -gt 0) {
     $env:KNOX_STEAM_ROOT = $steamRoots[0]
+    $env:KNOX_STEAM_ROOTS = [string]::Join([IO.Path]::PathSeparator, $steamRoots)
 }
 # Start-Process joins argument arrays into one Windows command line. Quote the
 # JAR explicitly: the distributed folder name itself contains spaces.

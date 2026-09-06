@@ -41,11 +41,14 @@ public final class Main {
     private final JCheckBox debugMode = new JCheckBox("Enable Project Zomboid Debug Mode");
     private final JTextField launchOptions = new JTextField();
     private final JButton launch = new LaunchButton();
+    private final JButton update = new JButton("CHECK FOR LAUNCHER UPDATE");
+    private LauncherUpdater.Update availableUpdate;
     private LauncherInstallation installation;
 
     public static void main(String[] arguments) {
-        LauncherLog.write("start version=0.2.2-preview.1 os=" + System.getProperty("os.name")
+        LauncherLog.write("start version=" + LauncherUpdater.CURRENT_VERSION + " os=" + System.getProperty("os.name")
             + " java=" + System.getProperty("java.version"));
+        if (new LauncherUpdater().launchCachedIfNewer()) return;
         SwingUtilities.invokeLater(() -> {
             UIManager.put("OptionPane.background", BACKGROUND);
             UIManager.put("Panel.background", BACKGROUND);
@@ -132,6 +135,15 @@ public final class Main {
         c.gridy = 6;
         c.insets = new Insets(0, 0, 0, 0);
         panel.add(launch, c);
+        update.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
+        update.setForeground(MUTED);
+        update.setOpaque(false);
+        update.setContentAreaFilled(false);
+        update.setBorderPainted(false);
+        update.addActionListener(event -> updateLauncher());
+        c.gridy = 7;
+        c.insets = new Insets(10, 0, 0, 0);
+        panel.add(update, c);
         return panel;
     }
 
@@ -167,6 +179,46 @@ public final class Main {
                     setStatus("NOT READY  •  " + cause.getMessage(), new Color(235, 105, 135));
                     LauncherLog.write("verification failed: " + cause);
                     launch.setEnabled(true);
+                }
+            }
+        }.execute();
+        new SwingWorker<LauncherUpdater.Update, Void>() {
+            @Override protected LauncherUpdater.Update doInBackground() throws Exception {
+                return new LauncherUpdater().check();
+            }
+            @Override protected void done() {
+                try {
+                    availableUpdate = get();
+                    if (availableUpdate != null) {
+                        update.setText("UPDATE LAUNCHER TO " + availableUpdate.version());
+                        update.setForeground(GREEN);
+                    } else update.setText("LAUNCHER UP TO DATE");
+                } catch (Exception ignored) {
+                    update.setText("CHECK FOR LAUNCHER UPDATE");
+                }
+            }
+        }.execute();
+    }
+
+    private void updateLauncher() {
+        if (availableUpdate == null) { refresh(); return; }
+        update.setEnabled(false);
+        setStatus("Downloading launcher update…", GREEN);
+        new SwingWorker<Boolean, Void>() {
+            @Override protected Boolean doInBackground() throws Exception {
+                LauncherUpdater updater = new LauncherUpdater();
+                updater.install(availableUpdate);
+                return updater.launchCachedIfNewer();
+            }
+            @Override protected void done() {
+                try {
+                    if (get()) window.dispose();
+                    else throw new IllegalStateException("Verified update could not be restarted.");
+                } catch (Exception exception) {
+                    availableUpdate = null;
+                    update.setEnabled(true);
+                    setStatus("UPDATE FAILED  •  " + exception.getMessage(), new Color(235, 105, 135));
+                    LauncherLog.write("update failed: " + exception);
                 }
             }
         }.execute();

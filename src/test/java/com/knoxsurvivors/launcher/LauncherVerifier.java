@@ -18,15 +18,46 @@ public final class LauncherVerifier {
         try {
             verifyLibraryParsing(root);
             verifySplitLibraryDiscovery(root);
+            verifyIndependentRootDiscovery(root);
             verifyValidationAndCommands(root);
             verifyOptionalAgentComposition(root);
             verifyChildLaunch(root);
-            if (arguments.length == 2) verifyPublishedPackage(Path.of(arguments[0]), Path.of(arguments[1]));
+            LaunchOptionsVerifier.verify(root);
+            if (arguments.length >= 2) verifyPublishedPackage(Path.of(arguments[0]), Path.of(arguments[1]));
             if (arguments.length >= 3) verifyRealZombieBuddy(root, Path.of(arguments[2]));
             System.out.println("launcher verification passed");
         } finally {
             deleteRecursively(root);
         }
+    }
+
+    private static void verifyIndependentRootDiscovery(Path root) throws Exception {
+        Path gameRoot = root.resolve("Independent Game Root");
+        Path workshopRoot = root.resolve("Independent Workshop Root");
+        Path game = gameRoot.resolve("steamapps/common/ProjectZomboid");
+        Path workshop = workshopRoot.resolve("steamapps/workshop/content/108600/3749727604");
+        Path mod = workshop.resolve("mods/KnoxSurvivors");
+        Path jar = mod.resolve("java/knox-agent-test.jar");
+        Files.createDirectories(game);
+        Files.createDirectories(mod.resolve("42"));
+        Files.createDirectories(jar.getParent());
+        Files.writeString(game.resolve("projectzomboid.jar"), "test");
+        Files.writeString(game.resolve("ProjectZomboid64.bat"), "@echo off");
+        Files.writeString(mod.resolve("mod.info"), "name=Knox Survivors\nid=KnoxSurvivors\n");
+        Files.copy(mod.resolve("mod.info"), mod.resolve("42/mod.info"));
+        Files.writeString(mod.resolve("42/knox-runtime.properties"),
+            "runtime=iso-player-agent-v1\nlauncherCompatibility=1\nruntimeVersion=0.2.0\n");
+        createAgent(jar, "0.2.0");
+        Files.writeString(Path.of(jar + ".sha256"), sha256(jar) + "  " + jar.getFileName());
+
+        LauncherInstallation found = new SteamLocator().locateFromRoots(
+            List.of(gameRoot, workshopRoot), Platform.WINDOWS
+        );
+        require(found.gameDirectory().equals(game.toAbsolutePath().normalize()),
+            "independent game root was not retained");
+        require(found.workshopDirectory().equals(workshop.toAbsolutePath().normalize()),
+            "independent Workshop root was not combined with the game root");
+        new InstallationValidator().validate(found);
     }
 
     private static void verifySplitLibraryDiscovery(Path root) throws Exception {
@@ -117,12 +148,25 @@ public final class LauncherVerifier {
                 platform + " launch command lost game executable");
             require(!command.contains("-debug"), platform + " enabled debug mode by default");
             List<String> debugCommand = GameLauncher.command(installation, true);
-            require(debugCommand.get(debugCommand.size() - 1).equals("-debug"),
+            require(platform == Platform.WINDOWS
+                ? debugCommand.get(debugCommand.size() - 1).contains("\"-debug\"")
+                : debugCommand.get(debugCommand.size() - 1).equals("-debug"),
                 platform + " did not pass the standard debug argument");
+            List<String> customCommand = GameLauncher.command(
+                installation, true, "-cachedir=\"D:\\Zomboid Profile\""
+            );
+            require(platform == Platform.WINDOWS
+                ? customCommand.get(customCommand.size() - 1).contains("\"-debug\" \"-cachedir=D:\\Zomboid Profile\"")
+                : customCommand.get(customCommand.size() - 2).equals("-debug")
+                && customCommand.get(customCommand.size() - 1).equals("-cachedir=D:\\Zomboid Profile"),
+                platform + " lost debug plus a quoted custom option");
         }
         LauncherInstallation installation = new LauncherInstallation(
             root, game, workshop, mod, jar, game.resolve("ProjectZomboid64.bat"), Platform.WINDOWS
         );
+        expectFailure(() -> GameLauncher.command(
+            installation, true, "-cachedir=D:\\Zomboid -novoip"
+        ), "at most two game options");
         Path checksum = Path.of(jar + ".sha256");
         String goodChecksum = Files.readString(checksum);
         Files.writeString(checksum, "0".repeat(64));
@@ -176,7 +220,7 @@ public final class LauncherVerifier {
         Path executable = game.resolve(platform == Platform.WINDOWS ? "ProjectZomboid64.bat" : "projectzomboid.sh");
         Files.writeString(executable, platform == Platform.WINDOWS
             ? "@echo off\r\nset JAVA_TOOL_OPTIONS > \"" + output + "\"\r\n"
-                + "echo %1> \"" + argumentOutput + "\"\r\nexit /b 0\r\n"
+                + "echo %~1> \"" + argumentOutput + "\"\r\nexit /b 0\r\n"
             : "#!/bin/sh\nprintf '%s' \"$JAVA_TOOL_OPTIONS\" > '" + output + "'\n"
                 + "printf '%s' \"$1\" > '" + argumentOutput + "'\n");
         Path agent = game.resolve("Mod Folder With Spaces/knox-agent-test.jar");

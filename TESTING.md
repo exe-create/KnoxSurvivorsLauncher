@@ -52,10 +52,18 @@ Do not post save files or logs publicly without checking them for personal paths
 
 ## Automated checks
 
-The build verifies published Workshop layout, split Steam libraries, missing/mismatched
+The launcher build also verifies updater version filtering, release asset requirements,+checksum and manifest validation, stale/corrupt cache rejection, and atomic staged-update+activation using fixture data. It does not publish or contact GitHub during the test suite.
+
+The build verifies published Workshop layout, linked and independently discovered Steam libraries, missing/mismatched
 files, corrupt checksums, duplicate runtimes, and real child-process command quoting with
 spaced paths. Windows also tests the bootstrap script with a temporary Steam/library
 fixture. These checks do not start Project Zomboid or validate in-game NPC behavior.
+
+The Windows argument regressions reject shell operators, variable expansion, embedded quotes,
+and control characters. A fixture batch file forwards `%1 %2` to a real Java argument recorder
+to check no options, Debug plus custom options, spaces, trailing backslashes, and game paths
+containing ampersands and parentheses. Parser checks also retain unmatched-quote errors and
+ensure Windows shell restrictions do not affect direct Linux/macOS arguments.
 
 Maintainers can check a staged upload with `LauncherVerifier`, using the built main/test
 classes and two arguments: the installed game directory, then the staging `Contents`
@@ -86,3 +94,5 @@ the Knox launcher does not silently execute native code directly from a Workshop
    the launcher log reports `debug=true`.
 3. Confirm both launches still report the Knox bridge ready. If ZombieBuddy is installed,
    also confirm its Lua global remains available in both modes.
+4. On Windows, confirm Debug plus one quoted custom option works and a third combined option is
+   rejected clearly rather than silently disappearing in `ProjectZomboid64.bat`.

@@ -11,7 +11,7 @@ rm -rf "$DIST"
 mkdir -p "$CLASSES" "$TEST_CLASSES" "$DIST"
 find "$ROOT/src/main/java" -name '*.java' -print | sed 's/.*/"&"/' > "$BUILD/main-sources.txt"
 javac --release 17 -d "$CLASSES" @"$BUILD/main-sources.txt"
-printf '%s\n' 'Manifest-Version: 1.0' 'Main-Class: com.knoxsurvivors.launcher.Main' 'Implementation-Version: 0.2.3-preview.1' 'Knox-Update-Protocol: 1' > "$BUILD/MANIFEST.MF"
+printf '%s\n' 'Manifest-Version: 1.0' 'Main-Class: com.knoxsurvivors.launcher.Main' 'Implementation-Version: 0.2.3-preview.2' 'Knox-Update-Protocol: 1' > "$BUILD/MANIFEST.MF"
 jar --create --file "$ROOT/KnoxSurvivorsLauncher.jar" --manifest "$BUILD/MANIFEST.MF" -C "$CLASSES" .
 find "$ROOT/src/test/java" -name '*.java' -print | sed 's/.*/"&"/' > "$BUILD/test-sources.txt"
 javac --release 17 -cp "$CLASSES" -d "$TEST_CLASSES" @"$BUILD/test-sources.txt"

@@ -21,7 +21,7 @@ import java.util.jar.JarFile;
 
 /** Small, fail-closed updater. It never replaces the running JAR in place. */
 final class LauncherUpdater {
-    static final String CURRENT_VERSION = "0.2.3-preview.1";
+    static final String CURRENT_VERSION = "0.2.3-preview.2";
     private static final String API = "https://api.github.com/repos/exe-create/KnoxSurvivorsLauncher/releases";
     private static final Pattern RELEASE = Pattern.compile("\\{.*?\\\"tag_name\\\"\\s*:\\s*\\\"([^\\\"]+)\\\".*?\\\"draft\\\"\\s*:\\s*(true|false).*?\\\"prerelease\\\"\\s*:\\s*(true|false).*?\\\"html_url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\".*?\\\"assets\\\"\\s*:\\s*\\[(.*?)\\]", Pattern.DOTALL);
     private static final Pattern ASSET = Pattern.compile("\\{.*?\\\"name\\\"\\s*:\\s*\\\"([^\\\"]+)\\\".*?\\\"browser_download_url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\".*?\\}", Pattern.DOTALL);

@@ -39,7 +39,7 @@ Copy-Item (Join-Path $root 'README.txt') $macStage
 Compress-Archive -Path $windowsStage -DestinationPath (Join-Path $dist 'KnoxSurvivorsLauncher-windows.zip') -Force
 Compress-Archive -Path $linuxStage -DestinationPath (Join-Path $dist 'KnoxSurvivorsLauncher-linux.zip') -Force
 Compress-Archive -Path $macStage -DestinationPath (Join-Path $dist 'KnoxSurvivorsLauncher-macos.zip') -Force
-Get-FileHash (Join-Path $dist '*.zip') -Algorithm SHA256 | ForEach-Object {
+Copy-Item (Join-Path $root 'KnoxSurvivorsLauncher.jar') (Join-Path $dist 'KnoxSurvivorsLauncher.jar')
+Get-FileHash @((Join-Path $dist '*.zip'), (Join-Path $dist 'KnoxSurvivorsLauncher.jar')) -Algorithm SHA256 | ForEach-Object {
     "$($_.Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($_.Path))"
 } | Set-Content (Join-Path $dist 'SHA256SUMS.txt') -Encoding ASCII
-Copy-Item (Join-Path $root 'KnoxSurvivorsLauncher.jar') (Join-Path $dist 'KnoxSurvivorsLauncher.jar')

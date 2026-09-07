@@ -23,6 +23,7 @@ public final class LauncherVerifier {
             verifyOptionalAgentComposition(root);
             verifyChildLaunch(root);
             LaunchOptionsVerifier.verify(root);
+            UpdaterVerifier.verify(root);
             if (arguments.length >= 2) verifyPublishedPackage(Path.of(arguments[0]), Path.of(arguments[1]));
             if (arguments.length >= 3) verifyRealZombieBuddy(root, Path.of(arguments[2]));
             System.out.println("launcher verification passed");

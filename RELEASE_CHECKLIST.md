@@ -19,3 +19,18 @@ Workshop build is uploaded and verified from a normal subscribed installation.
 10. Keep the release marked as a preview until Linux and macOS testers report that the game starts and the Java bridge loads.
 
 Do not publish a launcher release before the matching Workshop update. The launcher intentionally rejects the old IsoZombie Workshop package.
+
+## Updater verification status — 2026-09-07
+
+Offline verifier now exercises order-independent release JSON, nested objects and
+escaped strings, draft/incomplete/foreign-asset rejection, numeric preview ordering,
+exact and nonduplicate JAR checksums, v-prefixed release tags, tampered caches and
+fallback from a newer cache with an invalid manifest. Downloads are staged before
+replacing a previously verified cached JAR. Both packaging scripts include the
+standalone launcher JAR in SHA256SUMS.txt.
+
+Windows build, launcher verifiers and bootstrap verifier pass locally. Linux/macOS
+execution, real HTTP download/interruption cases, concurrent update processes and
+end-to-end launch of an updated application remain acceptance gates. A process
+being started is not proof that the updated launcher reached its usable window.
+Do not claim those gates are complete based on the metadata/cache tests.

@@ -32,9 +32,9 @@ chmod +x "$MACOS/Launch Knox Survivors.command" "$MACOS/scripts/launch-knox-surv
 (cd "$BUILD/windows" && zip -qr "$DIST/KnoxSurvivorsLauncher-windows.zip" "Knox Survivors Launcher")
 (cd "$BUILD/linux" && zip -qr "$DIST/KnoxSurvivorsLauncher-linux.zip" "Knox Survivors Launcher")
 (cd "$BUILD/macos" && zip -qr "$DIST/KnoxSurvivorsLauncher-macos.zip" "Knox Survivors Launcher")
-if command -v sha256sum >/dev/null 2>&1; then
-    (cd "$DIST" && sha256sum KnoxSurvivorsLauncher-*.zip > SHA256SUMS.txt)
-else
-    (cd "$DIST" && shasum -a 256 KnoxSurvivorsLauncher-*.zip > SHA256SUMS.txt)
-fi
 cp "$ROOT/KnoxSurvivorsLauncher.jar" "$DIST/KnoxSurvivorsLauncher.jar"
+if command -v sha256sum >/dev/null 2>&1; then
+    (cd "$DIST" && sha256sum KnoxSurvivorsLauncher-*.zip KnoxSurvivorsLauncher.jar > SHA256SUMS.txt)
+else
+    (cd "$DIST" && shasum -a 256 KnoxSurvivorsLauncher-*.zip KnoxSurvivorsLauncher.jar > SHA256SUMS.txt)
+fi

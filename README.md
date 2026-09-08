@@ -68,9 +68,11 @@ is not required.
 
 ### Launcher updates
 
-The launcher checks the public Knox Survivors Launcher releases in the background at startup.
-When a newer non-draft release is available, it can download the standalone launcher JAR,
-verify its SHA-256 checksum and release metadata, then restart into the staged copy.
+The launcher checks the public Knox Survivors Launcher releases at startup. When a newer
+non-draft release is available, it automatically downloads the standalone launcher JAR,
+verifies its SHA-256 checksum and release metadata, then restarts into the staged copy.
+If the release service is unavailable, the normal launcher window still opens. The **CHECK FOR
+LAUNCHER UPDATE** control remains available for a manual retry while the window is open.
 The running launcher is never overwritten. A network failure leaves the normal Play button
 available, and updates are stored under the user's `KnoxSurvivors/launcher-updates` folder.
 

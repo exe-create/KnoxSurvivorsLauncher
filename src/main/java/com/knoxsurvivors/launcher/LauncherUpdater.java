@@ -21,7 +21,7 @@ import java.util.jar.JarFile;
 
 /** Small, fail-closed updater. It never replaces the running JAR in place. */
 final class LauncherUpdater {
-    static final String CURRENT_VERSION = "0.2.3-preview.2";
+    static final String CURRENT_VERSION = "0.2.3-preview.3";
     private static final String API = "https://api.github.com/repos/exe-create/KnoxSurvivorsLauncher/releases";
     private static final Pattern SHA = Pattern.compile("(?im)^([0-9a-f]{64})[ \\t]+\\*?KnoxSurvivorsLauncher\\.jar[ \\t]*$");
     private static final Pattern VERSION = Pattern.compile("^v?(\\d+)\\.(\\d+)\\.(\\d+)(?:-([0-9A-Za-z.-]+))?$");
@@ -128,6 +128,19 @@ final class LauncherUpdater {
             new ProcessBuilder(javaExecutable(), "-jar", selected.toAbsolutePath().toString()).inheritIO().start();
             return true;
         } catch (Exception ignored) { return false; }
+    }
+
+    /** Check for a newly published release before the launcher window opens. */
+    boolean updateAndLaunchIfNewer() {
+        try {
+            Update update = check();
+            if (update == null) return false;
+            install(update);
+            return launchCachedIfNewer();
+        } catch (Exception ignored) {
+            // An unavailable release service must never prevent a normal launch.
+            return false;
+        }
     }
 
     private Path download(URI uri, Path target) throws IOException, InterruptedException {

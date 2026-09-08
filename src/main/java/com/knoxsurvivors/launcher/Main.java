@@ -50,7 +50,8 @@ public final class Main {
     public static void main(String[] arguments) {
         LauncherLog.write("start version=" + LauncherUpdater.CURRENT_VERSION + " os=" + System.getProperty("os.name")
             + " java=" + System.getProperty("java.version"));
-        if (new LauncherUpdater().launchCachedIfNewer()) return;
+        LauncherUpdater updater = new LauncherUpdater();
+        if (updater.launchCachedIfNewer() || updater.updateAndLaunchIfNewer()) return;
         SwingUtilities.invokeLater(() -> {
             UIManager.put("OptionPane.background", BACKGROUND);
             UIManager.put("Panel.background", BACKGROUND);

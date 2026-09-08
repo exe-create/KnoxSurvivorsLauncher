@@ -6,18 +6,23 @@ import java.util.List;
 
 final class GameLauncher {
     Process launch(LauncherInstallation installation, boolean debugMode) throws LauncherException {
-        return launch(installation, debugMode, "");
+        return launch(installation, debugMode, "", "");
     }
 
     Process launch(LauncherInstallation installation, boolean debugMode, String customOptions)
         throws LauncherException {
+        return launch(installation, debugMode, customOptions, "");
+    }
+
+    Process launch(LauncherInstallation installation, boolean debugMode, String customOptions,
+                   String jvmOptions) throws LauncherException {
         List<String> command = command(installation, debugMode, customOptions);
         ProcessBuilder builder = new ProcessBuilder(command)
             .directory(installation.gameDirectory().toFile())
             .redirectErrorStream(true)
             .redirectOutput(ProcessBuilder.Redirect.DISCARD);
         String existing = builder.environment().getOrDefault("JAVA_TOOL_OPTIONS", "").trim();
-        String options = toolOptions(installation, existing);
+        String options = toolOptions(installation, existing, jvmOptions);
         ZombieBuddyCompatibility.Result zombieBuddy = ZombieBuddyCompatibility.inspect(installation);
         builder.environment().put("JAVA_TOOL_OPTIONS", options);
         try {
@@ -38,6 +43,11 @@ final class GameLauncher {
     }
 
     static String toolOptions(LauncherInstallation installation, String inherited) throws LauncherException {
+        return toolOptions(installation, inherited, "");
+    }
+
+    static String toolOptions(LauncherInstallation installation, String inherited, String jvmOptions)
+        throws LauncherException {
         String existing = inherited == null ? "" : inherited.trim();
         if (containsKnoxAgent(existing)) {
             throw new LauncherException(
@@ -45,6 +55,8 @@ final class GameLauncher {
             );
         }
         List<String> additions = new ArrayList<>();
+        List<String> requestedJvm = parseJvmOptions(jvmOptions);
+        additions.addAll(requestedJvm);
         ZombieBuddyCompatibility.Result zombieBuddy = ZombieBuddyCompatibility.inspect(installation);
         if (zombieBuddy.enabled() && !containsZombieBuddyAgent(existing)) {
             additions.add(zombieBuddy.option());
@@ -52,6 +64,18 @@ final class GameLauncher {
         additions.add("-javaagent:\"" + installation.agentJar().toAbsolutePath() + "\"=pz-game");
         if (!existing.isEmpty()) additions.add(0, existing);
         return String.join(" ", additions);
+    }
+
+    static List<String> parseJvmOptions(String value) throws LauncherException {
+        List<String> options = parseLaunchOptions(value);
+        for (String option : options) {
+            if (!option.matches("-X(?:ms|mx)[0-9]+[mMgG]")) {
+                throw new LauncherException(
+                    "JVM memory options must use -Xms or -Xmx with a value such as -Xms6g."
+                );
+            }
+        }
+        return options;
     }
 
     private static boolean containsKnoxAgent(String options) {

@@ -32,6 +32,7 @@ public final class Main {
     private static final Color PURPLE = new Color(165, 65, 255);
     private static final Color MUTED = new Color(184, 188, 194);
     private static final String PREF_LAUNCH_OPTIONS = "customLaunchOptions";
+    private static final String PREF_JVM_OPTIONS = "jvmMemoryOptions";
     private final SteamLocator locator = new SteamLocator();
     private final InstallationValidator validator = new InstallationValidator();
     private final GameLauncher gameLauncher = new GameLauncher();
@@ -40,6 +41,7 @@ public final class Main {
     private final JLabel status = new JLabel("Checking Steam and Workshop files…", SwingConstants.CENTER);
     private final JCheckBox debugMode = new JCheckBox("Enable Project Zomboid Debug Mode");
     private final JTextField launchOptions = new JTextField();
+    private final JTextField jvmOptions = new JTextField();
     private final JButton launch = new LaunchButton();
     private final JButton update = new JButton("CHECK FOR LAUNCHER UPDATE");
     private LauncherUpdater.Update availableUpdate;
@@ -69,7 +71,7 @@ public final class Main {
 
     private JPanel content() {
         JPanel panel = new BorderedPanel(new GridBagLayout());
-        panel.setPreferredSize(new Dimension(720, 470));
+        panel.setPreferredSize(new Dimension(720, 520));
         panel.setBorder(BorderFactory.createEmptyBorder(30, 54, 30, 54));
         GridBagConstraints c = new GridBagConstraints();
         c.gridx = 0;
@@ -132,7 +134,27 @@ public final class Main {
         launch.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         launch.setEnabled(false);
         launch.addActionListener(event -> launch());
+        JLabel memoryLabel = label("JVM MEMORY (optional)", 12, Font.BOLD, MUTED);
         c.gridy = 6;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.insets = new Insets(0, 0, 6, 0);
+        panel.add(memoryLabel, c);
+
+        jvmOptions.setText(preferences.get(PREF_JVM_OPTIONS, ""));
+        jvmOptions.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        jvmOptions.setForeground(Color.WHITE);
+        jvmOptions.setBackground(new Color(20, 22, 26));
+        jvmOptions.setCaretColor(GREEN);
+        jvmOptions.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(74, 78, 86)),
+            BorderFactory.createEmptyBorder(7, 9, 7, 9)
+        ));
+        jvmOptions.setToolTipText("For example: -Xms6g -Xmx12g. These are JVM memory settings.");
+        c.gridy = 7;
+        c.insets = new Insets(0, 18, 16, 18);
+        panel.add(jvmOptions, c);
+
+        c.gridy = 8;
         c.insets = new Insets(0, 0, 0, 0);
         panel.add(launch, c);
         update.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
@@ -141,7 +163,7 @@ public final class Main {
         update.setContentAreaFilled(false);
         update.setBorderPainted(false);
         update.addActionListener(event -> updateLauncher());
-        c.gridy = 7;
+        c.gridy = 9;
         c.insets = new Insets(10, 0, 0, 0);
         panel.add(update, c);
         return panel;
@@ -230,10 +252,13 @@ public final class Main {
             LauncherInstallation found = locator.locate();
             validator.validate(found);
             String custom = launchOptions.getText().trim();
+            String memory = jvmOptions.getText().trim();
             GameLauncher.parseLaunchOptions(custom);
+            GameLauncher.parseJvmOptions(memory);
             preferences.put(PREF_LAUNCH_OPTIONS, custom);
+            preferences.put(PREF_JVM_OPTIONS, memory);
             setStatus("Launching Project Zomboid…", GREEN);
-            gameLauncher.launch(found, debugMode.isSelected(), custom);
+            gameLauncher.launch(found, debugMode.isSelected(), custom, memory);
             window.dispose();
         } catch (LauncherException exception) {
             setStatus("NOT READY  •  " + exception.getMessage(), new Color(235, 105, 135));

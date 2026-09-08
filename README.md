@@ -56,6 +56,13 @@ and control characters other than tabs are rejected. Enter expanded paths such a
 `C:\Users\Gary\Zomboid` instead of `%USERPROFILE%\Zomboid`. Windows game installation paths
 containing `%` or `!` are also rejected to prevent command expansion.
 
+### JVM memory
+
+The launcher also includes a **JVM Memory** field for explicit heap settings. Enter values such
+as `-Xms6g -Xmx12g` when the normal Project Zomboid JSON or BAT memory setting is not what you
+want for this launch. These options are validated and applied to the child JVM, then remembered
+with the other launcher preferences.
+
 The launcher uses Project Zomboid's bundled Java runtime. A separate Java 17 installation
 is not required.
 

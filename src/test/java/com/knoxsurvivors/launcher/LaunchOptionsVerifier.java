@@ -25,6 +25,16 @@ final class LaunchOptionsVerifier {
             .equals(List.of("-cachedir=D:\\Zomboid Profile\\")), "trailing backslash was not preserved");
         require(GameLauncher.parseLaunchOptions("-cachedir='D:\\Zomboid Profile\\' -novoip")
             .equals(List.of("-cachedir=D:\\Zomboid Profile\\", "-novoip")), "single-quoted path was not preserved");
+        require(GameLauncher.parseJvmOptions("-Xms6g -Xmx12g")
+            .equals(List.of("-Xms6g", "-Xmx12g")), "JVM memory options were not parsed");
+        for (String option : List.of("-Xms", "-Xmx6", "-Xmx6g;whoami", "-Dfoo=bar")) {
+            try {
+                GameLauncher.parseJvmOptions(option);
+                throw new IllegalStateException("Unsafe JVM option was accepted: " + option);
+            } catch (LauncherException expected) {
+                require(expected.getMessage().contains("JVM memory options"), "unclear JVM option error");
+            }
+        }
         try {
             GameLauncher.parseLaunchOptions("-cachedir=\"unfinished");
             throw new IllegalStateException("Unmatched quote was accepted");

@@ -286,6 +286,9 @@ public final class LauncherVerifier {
             require(absent.startsWith("-Dexisting=value ") && absent.contains("knox-agent-test.jar")
                 && !absent.toLowerCase().contains("zombiebuddy"),
                 platform + " made absent ZombieBuddy a dependency or lost inherited options");
+            String memory = GameLauncher.toolOptions(installation, "", "-Xms6g -Xmx12g");
+            require(memory.startsWith("-Xms6g -Xmx12g ") && memory.contains("knox-agent-test.jar"),
+                platform + " did not carry explicit JVM memory settings into the child process");
             installZombieBuddy(game, platform);
             String composed = GameLauncher.toolOptions(installation, "-Dexisting=value");
             String marker = platform == Platform.WINDOWS ? "-agentlib:zbNative" : "ZombieBuddy.jar";

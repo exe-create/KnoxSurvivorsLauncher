@@ -1,0 +1,8 @@
+[0.2.3-preview.3] Launcher refresh
+- Keyed-art PLAY / INSTALL-UPDATE / SETTINGS buttons over the art.
+- 16:9 background with cover-fit scaling and readability dim.
+- Settings lives in its own dialog (debug, launch options, JVM memory).
+
+[Earlier] IsoPlayer rebuild
+- Workshop files + Java runtime checksum verified before launch.
+- ZombieBuddy compatibility kept where installed.

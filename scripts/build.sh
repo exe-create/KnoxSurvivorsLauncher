@@ -10,7 +10,13 @@ rm -rf "$BUILD"
 rm -rf "$DIST"
 mkdir -p "$CLASSES" "$TEST_CLASSES" "$DIST"
 find "$ROOT/src/main/java" -name '*.java' -print | sed 's/.*/"&"/' > "$BUILD/main-sources.txt"
-javac --release 17 -d "$CLASSES" @"$BUILD/main-sources.txt"
+javac --release 17 -encoding UTF-8 -d "$CLASSES" @"$BUILD/main-sources.txt"
+if [ -d "$ROOT/src/main/resources" ]; then
+  for f in "$ROOT"/src/main/resources/*.png "$ROOT"/src/main/resources/*.jpg "$ROOT"/src/main/resources/changelog.txt; do
+    [ -e "$f" ] || continue
+    case "$(basename "$f")" in README.txt) continue;; *) cp "$f" "$CLASSES/";; esac
+  done
+fi
 printf '%s\n' 'Manifest-Version: 1.0' 'Main-Class: com.knoxsurvivors.launcher.Main' 'Implementation-Version: 0.2.3-preview.3' 'Knox-Update-Protocol: 1' > "$BUILD/MANIFEST.MF"
 jar --create --file "$ROOT/KnoxSurvivorsLauncher.jar" --manifest "$BUILD/MANIFEST.MF" -C "$CLASSES" .
 find "$ROOT/src/test/java" -name '*.java' -print | sed 's/.*/"&"/' > "$BUILD/test-sources.txt"

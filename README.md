@@ -58,10 +58,12 @@ containing `%` or `!` are also rejected to prevent command expansion.
 
 ### JVM memory
 
-The launcher also includes a **JVM Memory** field for explicit heap settings. Enter values such
-as `-Xms6g -Xmx12g` when the normal Project Zomboid JSON or BAT memory setting is not what you
-want for this launch. These options are validated and applied to the child JVM, then remembered
-with the other launcher preferences.
+Project Zomboid owns JVM memory. The launcher detects and displays the effective `-Xmx` value
+from `ProjectZomboid64.json` (or the selected platform script), but does not rewrite that file,
+inject a competing heap flag, or create a backup beside the game. This preserves the normal
+Steam/game configuration and prevents a launcher setting from being silently overridden by the
+game's own command line. Change memory through Project Zomboid's normal configuration, then
+restart the launcher to see the detected value.
 
 The launcher uses Project Zomboid's bundled Java runtime. A separate Java 17 installation
 is not required.

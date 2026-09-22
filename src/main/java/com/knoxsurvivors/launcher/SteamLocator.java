@@ -25,7 +25,65 @@ final class SteamLocator {
 
     LauncherInstallation locate() throws LauncherException {
         Platform platform = Platform.current();
-        return locateFromRoots(steamCandidates(platform), platform);
+        List<Path> roots = new ArrayList<>(steamCandidates(platform));
+        for (Path swept : driveLibraryRoots()) {
+            if (!roots.contains(swept)) roots.add(swept);
+        }
+        return locateFromRoots(roots, platform);
+    }
+
+    /**
+     * Fallback sweep for Steam libraries Windows players add on other drives.
+     * Only existence checks, no recursion: if libraryfolders.vdf is missing or
+     * stale, the game on D:/E: is still found instead of reporting "not found".
+     */
+    static List<Path> driveLibraryRoots() {
+        List<Path> results = new ArrayList<>();
+        for (File root : File.listRoots()) {
+            try {
+                if (!root.isDirectory()) continue;
+                for (String child : List.of(
+                        "SteamLibrary",
+                        "Steam",
+                        "Program Files (x86)/Steam",
+                        "Program Files/Steam")) {
+                    Path candidate = normalize(root.toPath().resolve(child));
+                    if (Files.isDirectory(candidate) && !results.contains(candidate)) {
+                        results.add(candidate);
+                    }
+                }
+            } catch (Exception ignored) {
+                // An unreadable drive must never break discovery.
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Every library holding this Workshop item, sorted. More than one means
+     * Steam may sync or the game may read a stale copy, so the UI warns.
+     */
+    static List<Path> workshopCopies(Path primarySteamRoot, Platform platform) {
+        Set<Path> libraries = new LinkedHashSet<>();
+        try {
+            if (primarySteamRoot != null && Files.isDirectory(primarySteamRoot)) {
+                libraries.addAll(libraries(primarySteamRoot));
+            }
+        } catch (LauncherException ignored) {
+        }
+        for (Path swept : driveLibraryRoots()) {
+            libraries.add(normalize(swept));
+        }
+        List<Path> copies = new ArrayList<>();
+        for (Path library : libraries) {
+            Path candidate = library.resolve("steamapps/workshop/content")
+                .resolve(STEAM_APP_ID).resolve(WORKSHOP_ITEM_ID);
+            if (Files.isDirectory(candidate) && !copies.contains(candidate)) {
+                copies.add(candidate);
+            }
+        }
+        copies.sort(null);
+        return copies;
     }
 
     LauncherInstallation locateFromRoots(List<Path> steamRoots, Platform platform)

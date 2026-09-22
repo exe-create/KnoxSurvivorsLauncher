@@ -10,8 +10,14 @@ Remove-Item -LiteralPath $dist -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $classes,$testClasses,$dist | Out-Null
 $sources = Get-ChildItem -LiteralPath (Join-Path $root 'src\main\java') -Recurse -Filter '*.java' | ForEach-Object FullName
 $tests = Get-ChildItem -LiteralPath (Join-Path $root 'src\test\java') -Recurse -Filter '*.java' | ForEach-Object FullName
-& javac --release 17 -d $classes $sources
+& javac --release 17 -encoding UTF-8 -d $classes $sources
 if ($LASTEXITCODE -ne 0) { throw 'Launcher compilation failed.' }
+$resources = Join-Path $root 'src\main\resources'
+if (Test-Path -LiteralPath $resources) {
+    Get-ChildItem -LiteralPath $resources -File | Where-Object { $_.Name -ne 'README.txt' } | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $classes $_.Name) -Force
+    }
+}
 @("Manifest-Version: 1.0", "Main-Class: com.knoxsurvivors.launcher.Main", "Implementation-Version: 0.2.3-preview.3", "Knox-Update-Protocol: 1", "") | Set-Content (Join-Path $build 'MANIFEST.MF') -Encoding ascii
 & jar --create --file (Join-Path $root 'KnoxSurvivorsLauncher.jar') --manifest (Join-Path $build 'MANIFEST.MF') -C $classes .
 if ($LASTEXITCODE -ne 0) { throw 'Launcher packaging failed.' }

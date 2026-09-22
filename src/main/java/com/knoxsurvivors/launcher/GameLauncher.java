@@ -22,7 +22,11 @@ final class GameLauncher {
             .redirectErrorStream(true)
             .redirectOutput(ProcessBuilder.Redirect.DISCARD);
         String existing = builder.environment().getOrDefault("JAVA_TOOL_OPTIONS", "").trim();
-        String options = toolOptions(installation, existing, jvmOptions);
+        // Keep Project Zomboid's normal launcher authoritative for VM flags.
+        // Its own command line/configuration wins over JAVA_TOOL_OPTIONS; adding
+        // -Xmx here would appear to work while silently being ignored. Knox
+        // only contributes its agent (and preserves compatible existing agents).
+        String options = toolOptions(installation, existing, "");
         ZombieBuddyCompatibility.Result zombieBuddy = ZombieBuddyCompatibility.inspect(installation);
         builder.environment().put("JAVA_TOOL_OPTIONS", options);
         try {
@@ -55,8 +59,9 @@ final class GameLauncher {
             );
         }
         List<String> additions = new ArrayList<>();
-        List<String> requestedJvm = parseJvmOptions(jvmOptions);
-        additions.addAll(requestedJvm);
+        // Validate legacy callers but never inject these flags. The platform
+        // launcher owns -Xms/-Xmx and must remain the single source of truth.
+        parseJvmOptions(jvmOptions);
         ZombieBuddyCompatibility.Result zombieBuddy = ZombieBuddyCompatibility.inspect(installation);
         if (zombieBuddy.enabled() && !containsZombieBuddyAgent(existing)) {
             additions.add(zombieBuddy.option());

@@ -17,7 +17,7 @@ if [ -d "$ROOT/src/main/resources" ]; then
     case "$(basename "$f")" in README.txt) continue;; *) cp "$f" "$CLASSES/";; esac
   done
 fi
-printf '%s\n' 'Manifest-Version: 1.0' 'Main-Class: com.knoxsurvivors.launcher.Main' 'Implementation-Version: 0.3.0-rc3' 'Knox-Update-Protocol: 1' > "$BUILD/MANIFEST.MF"
+printf '%s\n' 'Manifest-Version: 1.0' 'Main-Class: com.knoxsurvivors.launcher.Main' 'Implementation-Version: 0.3.0' 'Knox-Update-Protocol: 1' > "$BUILD/MANIFEST.MF"
 jar --create --file "$ROOT/KnoxSurvivorsLauncher.jar" --manifest "$BUILD/MANIFEST.MF" -C "$CLASSES" .
 find "$ROOT/src/test/java" -name '*.java' -print | sed 's/.*/"&"/' > "$BUILD/test-sources.txt"
 javac --release 17 -cp "$CLASSES" -d "$TEST_CLASSES" @"$BUILD/test-sources.txt"

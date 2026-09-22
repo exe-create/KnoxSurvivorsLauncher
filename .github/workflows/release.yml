@@ -83,15 +83,17 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          prerelease: true
+          name: Knox Survivors Launcher ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
           draft: false
           generate_release_notes: true
           body: |
-            Preview launcher for the Knox Survivors IsoPlayer rebuild.
+            Knox Survivors Launcher release.
 
-            The current public Workshop item may still be the older release. The launcher
-            checks the subscribed files and will wait safely rather than combining mismatched
-            Lua and Java builds.
+            The launcher verifies the subscribed Workshop files and Knox runtime, then starts
+            Project Zomboid using the supported runtime path for the current Java NPC build.
+            Users do not need to edit Java, Windows PATH, Steam launch options, or Project
+            Zomboid files.
           files: |
             dist/KnoxSurvivorsLauncher-windows.zip
             dist/KnoxSurvivorsLauncher-linux.zip

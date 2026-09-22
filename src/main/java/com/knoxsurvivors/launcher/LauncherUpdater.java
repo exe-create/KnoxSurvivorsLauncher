@@ -21,7 +21,7 @@ import java.util.jar.JarFile;
 
 /** Small, fail-closed updater. It never replaces the running JAR in place. */
 final class LauncherUpdater {
-    static final String CURRENT_VERSION = "0.3.0-rc1";
+    static final String CURRENT_VERSION = "0.3.0-rc3";
     private static final String API = "https://api.github.com/repos/exe-create/KnoxSurvivorsLauncher/releases";
     private static final Pattern SHA = Pattern.compile("(?im)^([0-9a-f]{64})[ \\t]+\\*?KnoxSurvivorsLauncher\\.jar[ \\t]*$");
     private static final Pattern VERSION = Pattern.compile("^v?(\\d+)\\.(\\d+)\\.(\\d+)(?:-([0-9A-Za-z.-]+))?$");

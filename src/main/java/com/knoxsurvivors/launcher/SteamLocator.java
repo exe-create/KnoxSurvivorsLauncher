@@ -112,9 +112,22 @@ final class SteamLocator {
                 game, workshop, mod, agent, gameLauncher, platform
             );
         }
+        if (game == null && workshop == null) {
+            throw new LauncherException(
+                "Project Zomboid and the Knox Survivors Workshop download were not found. "
+                    + "Make sure Steam is installed, Project Zomboid is installed, and Workshop item "
+                    + WORKSHOP_ITEM_ID + " is subscribed/downloaded."
+            );
+        }
+        if (game == null) {
+            throw new LauncherException(
+                "Knox Survivors was found, but the Project Zomboid installation was not. "
+                    + "Install or verify Project Zomboid through Steam."
+            );
+        }
         throw new LauncherException(
-            "Project Zomboid or Knox Survivors was not found. Subscribe to Workshop item "
-                + WORKSHOP_ITEM_ID + ", let Steam finish downloading it, then press Play again."
+            "Project Zomboid was found, but Knox Survivors Workshop item " + WORKSHOP_ITEM_ID
+                + " was not downloaded. Subscribe to the mod and let Steam finish the download."
         );
     }
 
@@ -236,8 +249,12 @@ final class SteamLocator {
     private static Path gameLauncher(Path game, Platform platform) throws LauncherException {
         List<Path> candidates = new ArrayList<>();
         if (platform == Platform.WINDOWS) {
-            candidates.add(game.resolve("ProjectZomboid64.exe"));
+            // Knox's Java agent is reliable through PZ's bundled-Java BAT launcher.
+            // The native EXE can resolve an unrelated system Java DLL before the
+            // bundled runtime when JAVA_TOOL_OPTIONS contains -javaagent, which
+            // prevents the game from starting on otherwise valid installs.
             candidates.add(game.resolve("ProjectZomboid64.bat"));
+            candidates.add(game.resolve("ProjectZomboid64.exe"));
         } else {
             candidates.add(game.resolve("projectzomboid.sh"));
             candidates.add(game.resolve("ProjectZomboid64"));

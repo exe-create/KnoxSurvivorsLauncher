@@ -45,6 +45,8 @@ public final class Main {
     private static final Color GREEN = new Color(188, 255, 0);
     private static final Color PURPLE = new Color(165, 65, 255);
     private static final Color MUTED = new Color(184, 188, 194);
+    private static final Color WARNING = new Color(235, 185, 65);
+    private static final Color ERROR = new Color(245, 105, 135);
     private static final String PREF_LAUNCH_OPTIONS = "customLaunchOptions";
     private final SteamLocator locator = new SteamLocator();
     private final InstallationValidator validator = new InstallationValidator();
@@ -76,10 +78,26 @@ public final class Main {
     private JLabel memoryDot;
     private JLabel memoryDetail;
     private JButton workshopHelp;
+    private boolean refreshRunning;
+    private String baseStatus = "";
+    private Color baseStatusColor = MUTED;
+    private String baseStatusTooltip = "";
+    private String updateStatusSuffix = "";
+
+    private enum CheckState {
+        CHECKING, OK, WARNING, ERROR
+    }
+
+    private enum CheckTarget {
+        GAME, MOD, RUNTIME, MEMORY
+    }
+
+    private record CheckUpdate(CheckTarget target, CheckState state, String detail) {}
 
     public static void main(String[] arguments) {
         LauncherLog.write("start version=" + LauncherUpdater.CURRENT_VERSION + " os=" + System.getProperty("os.name")
             + " java=" + System.getProperty("java.version"));
+        LauncherLog.sessionSnapshot();
         LauncherUpdater updater = new LauncherUpdater();
         if (updater.launchCachedIfNewer() || updater.updateAndLaunchIfNewer()) return;
         SwingUtilities.invokeLater(() -> {
@@ -97,7 +115,12 @@ public final class Main {
         window.pack();
         window.setLocationRelativeTo(null);
         window.setVisible(true);
-        refresh();
+        window.addWindowFocusListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowGainedFocus(java.awt.event.WindowEvent event) {
+                if (window.isVisible() && !refreshRunning) refresh(false);
+            }
+        });
+        refresh(true);
     }
 
     private JPanel content() {
@@ -421,6 +444,7 @@ public final class Main {
             }
             preferences.put(PREF_LAUNCH_OPTIONS, launchOptions.getText().trim());
             dialog.dispose();
+            refresh(false);
         });
         c.gridy = 6;
         c.fill = GridBagConstraints.NONE;
@@ -437,126 +461,222 @@ public final class Main {
     private static final class VerifyOutcome {
         LauncherInstallation installation;
         String failure;
-        boolean gameOk;
+        CheckState gameState = CheckState.CHECKING;
         String gameDetail = "Not checked.";
-        boolean modOk;
+        CheckState modState = CheckState.CHECKING;
         String modDetail = "Not checked.";
-        boolean runtimeOk;
+        CheckState runtimeState = CheckState.CHECKING;
         String runtimeDetail = "Not checked.";
-        boolean memoryOk = true;
+        CheckState memoryState = CheckState.CHECKING;
         String memoryDetail = "Not checked.";
         int workshopCopies;
+
+        boolean hasWarning() {
+            return gameState == CheckState.WARNING || modState == CheckState.WARNING
+                || runtimeState == CheckState.WARNING || memoryState == CheckState.WARNING;
+        }
+
+        boolean criticalChecksPassed() {
+            return gameState != CheckState.ERROR && modState != CheckState.ERROR
+                && runtimeState != CheckState.ERROR && memoryState != CheckState.ERROR;
+        }
     }
 
     private static VerifyOutcome verifyAll(SteamLocator locator, InstallationValidator validator,
-            String savedJvmOptions) {
+            String savedJvmOptions, java.util.function.Consumer<CheckUpdate> progress) {
         VerifyOutcome out = new VerifyOutcome();
         LauncherInstallation found;
         try {
             found = locator.locate();
         } catch (Exception exception) {
             Throwable cause = exception.getCause() != null ? exception.getCause() : exception;
-            out.failure = cause.getMessage();
-            out.gameOk = false;
-            out.gameDetail = cause.getMessage();
-            out.modOk = false;
-            out.modDetail = "Skipped - game not found.";
-            out.runtimeOk = false;
-            out.runtimeDetail = "Skipped - game not found.";
+            String message = safeMessage(cause, "Project Zomboid or Knox Survivors could not be located.");
+            out.failure = message;
+            String lower = message.toLowerCase(java.util.Locale.ROOT);
+            if (lower.contains("project zomboid was found, but knox survivors workshop")) {
+                out.gameState = CheckState.WARNING;
+                out.gameDetail = "Project Zomboid was found, but full game verification is waiting on the Workshop mod.";
+                out.modState = CheckState.ERROR;
+                out.modDetail = message;
+            } else if (lower.contains("knox survivors was found, but the project zomboid installation")) {
+                out.gameState = CheckState.ERROR;
+                out.gameDetail = message;
+                out.modState = CheckState.WARNING;
+                out.modDetail = "Knox Survivors was found, but full Workshop verification is waiting on the game install.";
+            } else {
+                out.gameState = CheckState.ERROR;
+                out.gameDetail = message;
+                out.modState = CheckState.ERROR;
+                out.modDetail = "Steam/Workshop discovery did not find a complete Knox Survivors install.";
+            }
+            out.runtimeState = CheckState.WARNING;
+            out.runtimeDetail = "Not checked because a complete Workshop install was not available.";
+            out.memoryState = CheckState.WARNING;
+            out.memoryDetail = "Not checked because a complete Project Zomboid install was not available.";
+            publish(progress, CheckTarget.GAME, out.gameState, out.gameDetail);
+            publish(progress, CheckTarget.MOD, out.modState, out.modDetail);
+            publish(progress, CheckTarget.RUNTIME, out.runtimeState, out.runtimeDetail);
+            publish(progress, CheckTarget.MEMORY, out.memoryState, out.memoryDetail);
+            LauncherLog.writeException("verification locate failed", exception);
             return out;
         }
         out.installation = found;
+        LauncherLog.write("verification paths game=" + found.gameDirectory()
+            + " launcher=" + found.gameLauncher()
+            + " workshop=" + found.workshopDirectory()
+            + " mod=" + found.modDirectory()
+            + " agent=" + found.agentJar());
+
         if (!Files.isDirectory(found.gameDirectory())) {
-            out.gameOk = false;
-            out.gameDetail = "Installation folder is missing.";
+            out.gameState = CheckState.ERROR;
+            out.gameDetail = "Project Zomboid installation folder is missing.";
         } else if (!Files.isRegularFile(found.gameLauncher())) {
-            out.gameOk = false;
-            out.gameDetail = "Normal game launcher is missing.";
+            out.gameState = CheckState.ERROR;
+            out.gameDetail = "Project Zomboid launcher is missing - verify the game through Steam.";
         } else if (!Files.isRegularFile(found.gameDirectory().resolve("projectzomboid.jar"))) {
-            out.gameOk = false;
-            out.gameDetail = "Game looks incomplete - verify through Steam.";
+            out.gameState = CheckState.ERROR;
+            out.gameDetail = "Project Zomboid looks incomplete - verify the game through Steam.";
+        } else if (found.platform() == Platform.WINDOWS
+                && found.gameLauncher().getFileName().toString().equalsIgnoreCase("ProjectZomboid64.bat")
+                && !Files.isRegularFile(found.gameDirectory().resolve("jre64/bin/java.exe"))) {
+            out.gameState = CheckState.ERROR;
+            out.gameDetail = "Project Zomboid's bundled Java runtime is missing - verify the game through Steam.";
         } else {
-            out.gameOk = true;
-            out.gameDetail = "Project Zomboid found on " + driveOf(found.gameDirectory()) + ".";
+            out.gameState = CheckState.OK;
+            String launcherName = found.gameLauncher().getFileName().toString();
+            out.gameDetail = "Project Zomboid found on " + driveOf(found.gameDirectory())
+                + " - " + launcherName + ".";
         }
+        publish(progress, CheckTarget.GAME, out.gameState, out.gameDetail);
+
         String runtimeVersion = "";
         String workshopVersion = "";
         try {
-            if (!modInfoHasId(found.modDirectory().resolve("mod.info"))
-                || !modInfoHasId(found.modDirectory().resolve("42/mod.info"))) {
-                out.modOk = false;
-                out.modDetail = "Mod ID KnoxSurvivors not found.";
+            Path rootInfo = found.modDirectory().resolve("mod.info");
+            Path build42Info = found.modDirectory().resolve("42/mod.info");
+            if (!modInfoHasId(rootInfo) || !modInfoHasId(build42Info)) {
+                out.modState = CheckState.ERROR;
+                out.modDetail = "Mod ID KnoxSurvivors is missing from the Workshop package.";
             } else {
                 Path buildInfo = found.modDirectory().resolve("42/knox-runtime.properties");
                 if (!Files.isRegularFile(buildInfo)) {
-                    out.modOk = false;
-                    out.modDetail = "Workshop package is missing the current Knox runtime - let Steam finish updating or verify the Workshop files.";
+                    out.modState = CheckState.ERROR;
+                    out.modDetail = "Workshop package is missing knox-runtime.properties - let Steam finish updating.";
                 } else {
                     java.util.Properties marker = new java.util.Properties();
                     try (InputStream input = Files.newInputStream(buildInfo)) {
                         marker.load(input);
                     }
                     runtimeVersion = marker.getProperty("runtimeVersion", "").trim();
-                    workshopVersion = modInfoVersion(found.modDirectory().resolve("mod.info"));
-                    if (workshopVersion.isEmpty()) {
-                        workshopVersion = runtimeVersion;
-                    }
-                    if (!"iso-player-agent-v1".equals(marker.getProperty("runtime"))
-                        || !"1".equals(marker.getProperty("launcherCompatibility"))
-                        || runtimeVersion.isEmpty()) {
-                        out.modOk = false;
-                        out.modDetail = "Workshop build is not compatible with this launcher.";
+                    workshopVersion = modInfoVersion(rootInfo);
+                    String build42Version = modInfoVersion(build42Info);
+                    if (workshopVersion.isEmpty()) workshopVersion = build42Version;
+                    if (workshopVersion.isEmpty()) workshopVersion = runtimeVersion;
+                    String runtimeType = marker.getProperty("runtime", "").trim();
+                    String compatibility = marker.getProperty("launcherCompatibility", "").trim();
+                    if (!"iso-player-agent-v1".equals(runtimeType)) {
+                        out.modState = CheckState.ERROR;
+                        out.modDetail = "Workshop runtime type is '" + runtimeType
+                            + "' but this launcher expects iso-player-agent-v1.";
+                    } else if (!"1".equals(compatibility)) {
+                        out.modState = CheckState.ERROR;
+                        out.modDetail = "Workshop launcher compatibility is '" + compatibility
+                            + "' but this launcher expects 1.";
+                    } else if (runtimeVersion.isEmpty()) {
+                        out.modState = CheckState.ERROR;
+                        out.modDetail = "Workshop runtime version is missing.";
+                    } else if (!workshopVersion.isEmpty() && !workshopVersion.equals(runtimeVersion)) {
+                        out.modState = CheckState.ERROR;
+                        out.modDetail = "Workshop version " + workshopVersion + " does not match runtime "
+                            + runtimeVersion + ". Let Steam finish updating.";
+                    } else if (!build42Version.isEmpty() && !build42Version.equals(runtimeVersion)) {
+                        out.modState = CheckState.ERROR;
+                        out.modDetail = "Build 42 mod version " + build42Version + " does not match runtime "
+                            + runtimeVersion + ". Let Steam finish updating.";
                     } else {
                         boolean developmentBuild = isDevelopmentVersion(workshopVersion)
                             || isDevelopmentVersion(runtimeVersion);
-                        out.modOk = !developmentBuild;
+                        out.modState = developmentBuild ? CheckState.WARNING : CheckState.OK;
                         out.modDetail = "Workshop " + workshopVersion + " - runtime " + runtimeVersion
                             + " on " + driveOf(found.workshopDirectory())
-                            + (developmentBuild ? " - DEVELOPMENT BUILD, not a published release." : ".");
+                            + (developmentBuild ? " - development build." : ".");
                     }
                 }
             }
         } catch (Exception exception) {
-            out.modOk = false;
-            out.modDetail = "Mod files could not be read.";
+            out.modState = CheckState.ERROR;
+            out.modDetail = "Workshop mod files could not be read: " + safeMessage(exception, "unknown error");
+            LauncherLog.writeException("verification Workshop read failed", exception);
         }
+        publish(progress, CheckTarget.MOD, out.modState, out.modDetail);
+
         try {
-            out.runtimeOk = false;
             Path jar = found.agentJar();
             if (jar == null || !Files.isRegularFile(jar)) {
-                out.runtimeDetail = "Java runtime JAR is missing.";
+                out.runtimeState = CheckState.ERROR;
+                out.runtimeDetail = "Knox Java runtime JAR is missing.";
             } else {
                 String problem = checkAgentJar(jar, runtimeVersion);
                 if (problem != null) {
+                    out.runtimeState = CheckState.ERROR;
                     out.runtimeDetail = problem;
                 } else {
-                    out.runtimeOk = !isDevelopmentVersion(runtimeVersion);
-                    out.runtimeDetail = "Agent"
-                        + (runtimeVersion.isEmpty() ? "" : " " + runtimeVersion)
-                        + " - checksum OK."
-                        + (out.runtimeOk ? "" : " Development runtime.");
+                    boolean developmentRuntime = isDevelopmentVersion(runtimeVersion);
+                    out.runtimeState = developmentRuntime ? CheckState.WARNING : CheckState.OK;
+                    out.runtimeDetail = "Agent " + (runtimeVersion.isEmpty() ? "version unknown" : runtimeVersion)
+                        + " - manifest + checksum OK"
+                        + (developmentRuntime ? " - development runtime." : ".");
                 }
             }
         } catch (Exception exception) {
-            out.runtimeOk = false;
-            out.runtimeDetail = "Runtime could not be opened.";
+            out.runtimeState = CheckState.ERROR;
+            out.runtimeDetail = "Runtime could not be inspected: " + safeMessage(exception, "unknown error");
+            LauncherLog.writeException("verification runtime inspection failed", exception);
         }
+        publish(progress, CheckTarget.RUNTIME, out.runtimeState, out.runtimeDetail);
+
         try {
             out.workshopCopies = SteamLocator.workshopCopies(found.steamDirectory(), Platform.current()).size();
         } catch (LauncherException unsupported) {
             out.workshopCopies = 0;
+            LauncherLog.write("Workshop duplicate scan unavailable: " + unsupported.getMessage());
         }
-        if (out.workshopCopies > 1 && out.modOk) {
-            out.modDetail += " " + out.workshopCopies
-                + " copies across libraries - Steam may sync the wrong one.";
+        if (out.workshopCopies > 1 && out.modState != CheckState.ERROR) {
+            out.modState = CheckState.WARNING;
+            out.modDetail += " Found " + out.workshopCopies
+                + " Workshop copies across Steam libraries; Steam may update a different copy.";
+            publish(progress, CheckTarget.MOD, out.modState, out.modDetail);
         }
+
         describeMemory(out, found, savedJvmOptions);
+        publish(progress, CheckTarget.MEMORY, out.memoryState, out.memoryDetail);
+
         try {
             validator.validate(found);
         } catch (LauncherException exception) {
             out.failure = exception.getMessage();
+            LauncherLog.writeException("validator rejected installation", exception);
+        }
+        if (out.failure == null && !out.criticalChecksPassed()) {
+            if (out.gameState == CheckState.ERROR) out.failure = out.gameDetail;
+            else if (out.modState == CheckState.ERROR) out.failure = out.modDetail;
+            else if (out.runtimeState == CheckState.ERROR) out.failure = out.runtimeDetail;
+            else if (out.memoryState == CheckState.ERROR) out.failure = out.memoryDetail;
         }
         return out;
+    }
+
+    private static void publish(java.util.function.Consumer<CheckUpdate> progress,
+            CheckTarget target, CheckState state, String detail) {
+        if (progress != null) progress.accept(new CheckUpdate(target, state, detail));
+        LauncherLog.write("check " + target.name().toLowerCase(java.util.Locale.ROOT)
+            + "=" + state + " detail=" + detail);
+    }
+
+    private static String safeMessage(Throwable problem, String fallback) {
+        if (problem == null) return fallback;
+        String message = problem.getMessage();
+        return message == null || message.isBlank() ? fallback : message;
     }
 
     private static String driveOf(Path path) {
@@ -582,31 +702,46 @@ public final class Main {
                 if (option.regionMatches(true, 0, "-Xmx", 0, 4)) overrideXmx = option.substring(4);
             }
         } catch (LauncherException invalid) {
-            out.memoryOk = false;
+            out.memoryState = CheckState.ERROR;
             out.memoryDetail = "Saved memory override is invalid: " + invalid.getMessage();
             return;
         }
         if (!overrideXmx.isEmpty()) {
             long wanted = MemoryProbe.parseHeapBytes(overrideXmx);
-            if (wanted > 0 && totalRam > 0 && wanted > totalRam) {
-                out.memoryOk = false;
-                out.memoryDetail = "Override wants " + MemoryProbe.friendlyBytes(wanted)
+            if (wanted <= 0) {
+                out.memoryState = CheckState.ERROR;
+                out.memoryDetail = "Launcher memory override could not be parsed: " + overrideXmx + ".";
+            } else if (totalRam > 0 && wanted > totalRam) {
+                out.memoryState = CheckState.ERROR;
+                out.memoryDetail = "Memory setting wants " + MemoryProbe.friendlyBytes(wanted)
                     + " but this PC has " + MemoryProbe.friendlyBytes(totalRam) + ".";
             } else {
+                out.memoryState = CheckState.OK;
                 out.memoryDetail = "Game will use " + MemoryProbe.friendlyBytes(wanted)
-                    + " (launcher override - applied on launch)" + ram + ".";
+                    + " (launcher override)" + ram + ".";
             }
             return;
         }
         if (heap.value().isEmpty()) {
-            out.memoryDetail = "Heap setting not found"
+            out.memoryState = CheckState.WARNING;
+            out.memoryDetail = "Heap setting was not detected"
                 + (heap.source().isEmpty() ? "" : " in " + heap.source())
-                + " - game defaults apply" + ram + ".";
+                + " - Project Zomboid defaults will apply" + ram + ".";
             return;
         }
-        out.memoryDetail = "Game will use "
-            + MemoryProbe.friendlyBytes(MemoryProbe.parseHeapBytes(heap.value()))
-            + " (from " + heap.source() + ")" + ram + ".";
+        long wanted = MemoryProbe.parseHeapBytes(heap.value());
+        if (wanted <= 0) {
+            out.memoryState = CheckState.WARNING;
+            out.memoryDetail = "Detected memory value '" + heap.value() + "' could not be parsed; game settings remain unchanged" + ram + ".";
+        } else if (totalRam > 0 && wanted > totalRam) {
+            out.memoryState = CheckState.ERROR;
+            out.memoryDetail = "Project Zomboid is configured for " + MemoryProbe.friendlyBytes(wanted)
+                + " but this PC has " + MemoryProbe.friendlyBytes(totalRam) + ".";
+        } else {
+            out.memoryState = CheckState.OK;
+            out.memoryDetail = "Game will use " + MemoryProbe.friendlyBytes(wanted)
+                + " (from " + heap.source() + ")" + ram + ".";
+        }
     }
 
     private static boolean modInfoHasId(Path file) {
@@ -640,38 +775,63 @@ public final class Main {
 
     private static String checkAgentJar(Path jar, String runtimeVersion) {
         try (java.util.jar.JarFile archive = new java.util.jar.JarFile(jar.toFile())) {
-            if (archive.getManifest() == null) return "Runtime has no launcher manifest.";
+            if (archive.getManifest() == null) return "Runtime JAR has no manifest.";
             java.util.jar.Attributes attributes = archive.getManifest().getMainAttributes();
-            if (!"com.knoxsurvivors.agent.KnoxAgent".equals(attributes.getValue("Premain-Class"))) {
-                return "Runtime has an invalid manifest.";
+            String premain = attributes.getValue("Premain-Class");
+            if (!"com.knoxsurvivors.agent.KnoxAgent".equals(premain)) {
+                return "Runtime Premain-Class is '" + String.valueOf(premain)
+                    + "' instead of com.knoxsurvivors.agent.KnoxAgent.";
             }
-            if (!runtimeVersion.isEmpty()
-                && !runtimeVersion.equals(attributes.getValue("Implementation-Version"))) {
-                return "Mod and runtime versions do not match.";
+            String actualVersion = attributes.getValue("Implementation-Version");
+            if (!runtimeVersion.isEmpty() && !runtimeVersion.equals(actualVersion)) {
+                return "Runtime version mismatch: Workshop expects " + runtimeVersion
+                    + " but JAR reports " + String.valueOf(actualVersion) + ".";
             }
         } catch (Exception exception) {
-            return "Runtime could not be opened.";
+            LauncherLog.writeException("runtime JAR open failed " + jar, exception);
+            return "Runtime JAR could not be opened: " + safeMessage(exception, "unknown error") + ".";
         }
         Path checksum = Path.of(jar + ".sha256");
-        if (!Files.isRegularFile(checksum)) return "Runtime checksum is missing.";
+        if (!Files.isRegularFile(checksum)) return "Runtime checksum file is missing.";
         try {
             String expected = Files.readString(checksum, java.nio.charset.StandardCharsets.US_ASCII)
                 .trim().split("\\s+", 2)[0].toLowerCase();
+            if (!expected.matches("[0-9a-f]{64}")) {
+                return "Runtime checksum file is invalid.";
+            }
             String actual;
             try (InputStream input = Files.newInputStream(jar)) {
                 actual = java.util.HexFormat.of().formatHex(
                     java.security.MessageDigest.getInstance("SHA-256").digest(input.readAllBytes()));
             }
-            if (!expected.equals(actual)) return "Runtime did not pass its checksum.";
+            if (!expected.equals(actual)) {
+                return "Runtime checksum mismatch (expected " + expected.substring(0, 12)
+                    + "..., got " + actual.substring(0, 12) + "...). Verify the Workshop item through Steam.";
+            }
         } catch (Exception exception) {
-            return "Runtime checksum could not be verified.";
+            LauncherLog.writeException("runtime checksum verification failed " + jar, exception);
+            return "Runtime checksum could not be verified: " + safeMessage(exception, "unknown error") + ".";
         }
         return null;
     }
 
-    private void setVerifyRow(JLabel dot, JLabel detail, boolean ok, String text) {
-        dot.setForeground(ok ? GREEN : new Color(235, 105, 135));
+    private void setVerifyRow(JLabel dot, JLabel detail, CheckState state, String text) {
+        dot.setForeground(switch (state) {
+            case OK -> GREEN;
+            case WARNING, CHECKING -> WARNING;
+            case ERROR -> ERROR;
+        });
         detail.setText("<html><div style='width:300px'>" + escapeHtml(text) + "</div></html>");
+        detail.setToolTipText(text);
+    }
+
+    private void applyCheckUpdate(CheckUpdate update) {
+        switch (update.target()) {
+            case GAME -> setVerifyRow(gameDot, gameDetail, update.state(), update.detail());
+            case MOD -> setVerifyRow(modDot, modDetail, update.state(), update.detail());
+            case RUNTIME -> setVerifyRow(runtimeDot, runtimeDetail, update.state(), update.detail());
+            case MEMORY -> setVerifyRow(memoryDot, memoryDetail, update.state(), update.detail());
+        }
     }
 
     private String detectedMemoryLine() {
@@ -685,75 +845,106 @@ public final class Main {
     }
 
     private void refresh() {
-        setStatus("Checking Steam and Workshop files...", MUTED, "Checking...");
-        setVerifyRow(gameDot, gameDetail, false, "Checking...");
-        gameDot.setForeground(new Color(200, 160, 40));
-        setVerifyRow(modDot, modDetail, false, "Checking...");
-        modDot.setForeground(new Color(200, 160, 40));
-        setVerifyRow(runtimeDot, runtimeDetail, false, "Checking...");
-        runtimeDot.setForeground(new Color(200, 160, 40));
-        setVerifyRow(memoryDot, memoryDetail, false, "Checking...");
-        memoryDot.setForeground(new Color(200, 160, 40));
+        refresh(false);
+    }
+
+    private void refresh(boolean checkUpdater) {
+        if (refreshRunning) {
+            if (checkUpdater) checkLauncherUpdate();
+            return;
+        }
+        refreshRunning = true;
+        setStatus("Checking Steam and Workshop files...", MUTED, "Checking current files...");
+        setVerifyRow(gameDot, gameDetail, CheckState.CHECKING, "Checking...");
+        setVerifyRow(modDot, modDetail, CheckState.CHECKING, "Waiting for game check...");
+        setVerifyRow(runtimeDot, runtimeDetail, CheckState.CHECKING, "Waiting for Workshop check...");
+        setVerifyRow(memoryDot, memoryDetail, CheckState.CHECKING, "Waiting for game check...");
         workshopHelp.setVisible(false);
         play.setEnabled(false);
-        installUpdate.setEnabled(false);
-        settingsButton.setEnabled(false);
+        play.setToolTipText("Checking the current Project Zomboid and Knox Survivors files.");
+        settingsButton.setEnabled(true);
+        if (checkUpdater) checkLauncherUpdate();
         final String savedJvmOptions = "";
-        new SwingWorker<VerifyOutcome, Void>() {
+        new SwingWorker<VerifyOutcome, CheckUpdate>() {
             @Override protected VerifyOutcome doInBackground() {
-                return verifyAll(locator, validator, savedJvmOptions);
+                return verifyAll(locator, validator, savedJvmOptions, update -> publish(update));
+            }
+
+            @Override protected void process(java.util.List<CheckUpdate> chunks) {
+                for (CheckUpdate update : chunks) applyCheckUpdate(update);
             }
 
             @Override protected void done() {
+                refreshRunning = false;
                 try {
                     VerifyOutcome outcome = get();
-                    setVerifyRow(gameDot, gameDetail, outcome.gameOk, outcome.gameDetail);
-                    setVerifyRow(modDot, modDetail, outcome.modOk, outcome.modDetail);
-                    setVerifyRow(runtimeDot, runtimeDetail, outcome.runtimeOk, outcome.runtimeDetail);
-                    setVerifyRow(memoryDot, memoryDetail, outcome.memoryOk, outcome.memoryDetail);
+                    installation = outcome.installation;
+                    setVerifyRow(gameDot, gameDetail, outcome.gameState, outcome.gameDetail);
+                    setVerifyRow(modDot, modDetail, outcome.modState, outcome.modDetail);
+                    setVerifyRow(runtimeDot, runtimeDetail, outcome.runtimeState, outcome.runtimeDetail);
+                    setVerifyRow(memoryDot, memoryDetail, outcome.memoryState, outcome.memoryDetail);
                     workshopHelp.setVisible(outcome.failure != null && isWorkshopFailure(outcome.failure));
-                    if (outcome.failure == null) {
-                        installation = outcome.installation;
+                    if (outcome.failure == null && outcome.criticalChecksPassed()) {
                         var zombieBuddy = ZombieBuddyCompatibility.inspect(installation);
                         String optional = zombieBuddy.enabled() || zombieBuddy.state().equals("enabled-by-game-launcher")
                             ? "  -  ZombieBuddy detected" : "";
-                        setStatus("READY  -  Workshop mod and Knox runtime verified" + optional, GREEN,
-                            "Ready. Press PLAY.");
-                        LauncherLog.write("verification ready");
+                        if (outcome.hasWarning()) {
+                            setStatus("READY WITH WARNING  -  checks passed; review the amber item" + optional,
+                                WARNING, "Ready to launch, but one non-blocking check needs attention.");
+                            LauncherLog.write("verification ready with warning");
+                        } else {
+                            setStatus("READY  -  Workshop mod and Knox runtime verified" + optional, GREEN,
+                                "Ready. Press PLAY.");
+                            LauncherLog.write("verification ready");
+                        }
+                        play.setEnabled(true);
+                        play.setToolTipText("Verified. Start Project Zomboid with Knox Survivors.");
                     } else {
-                        installation = null;
-                        setStatus("NOT READY  -  " + outcome.failure, new Color(235, 105, 135),
-                            "Verification failed.");
-                        LauncherLog.write("verification failed: " + outcome.failure);
+                        String reason = outcome.failure != null ? outcome.failure : "A required system check failed.";
+                        setStatus("NOT READY  -  " + reason, ERROR, reason);
+                        play.setEnabled(false);
+                        play.setToolTipText("Cannot launch yet: " + reason);
+                        LauncherLog.write("verification failed: " + reason);
                     }
                 } catch (Exception exception) {
                     installation = null;
                     Throwable cause = exception.getCause() != null ? exception.getCause() : exception;
-                    setStatus("NOT READY  -  " + cause.getMessage(), new Color(235, 105, 135),
-                        "Verification failed.");
-                    LauncherLog.write("verification failed: " + cause);
+                    String reason = safeMessage(cause, "Verification failed unexpectedly.");
+                    setStatus("NOT READY  -  " + reason, ERROR, reason);
+                    setVerifyRow(gameDot, gameDetail, CheckState.ERROR, "Verification stopped unexpectedly - see launcher.log.");
+                    play.setEnabled(false);
+                    play.setToolTipText("Verification failed. See launcher.log for details.");
+                    LauncherLog.writeException("verification worker failed", cause);
                 }
-                play.setEnabled(true);
                 installUpdate.setEnabled(true);
                 settingsButton.setEnabled(true);
             }
         }.execute();
+    }
+
+    private void checkLauncherUpdate() {
+        installUpdate.setEnabled(false);
+        installUpdate.setToolTipText("Checking for a launcher update...");
         new SwingWorker<LauncherUpdater.Update, Void>() {
             @Override protected LauncherUpdater.Update doInBackground() throws Exception {
                 return new LauncherUpdater().check();
             }
             @Override protected void done() {
+                installUpdate.setEnabled(true);
                 try {
                     availableUpdate = get();
                     if (availableUpdate != null) {
                         installUpdate.setToolTipText("Update available: " + availableUpdate.version() + " - click INSTALL / UPDATE.");
-                        appendStatus("  -  UPDATE AVAILABLE: " + availableUpdate.version(), GREEN);
+                        setUpdateStatusSuffix("  -  UPDATE AVAILABLE: " + availableUpdate.version());
                     } else {
                         installUpdate.setToolTipText("Launcher is up to date - click to re-check.");
-                        appendStatus("  -  LAUNCHER UP TO DATE", MUTED);
+                        setUpdateStatusSuffix("  -  LAUNCHER UP TO DATE");
                     }
-                } catch (Exception ignored) {
-                    installUpdate.setToolTipText("Check for a launcher update.");
+                } catch (Exception exception) {
+                    availableUpdate = null;
+                    setUpdateStatusSuffix("");
+                    installUpdate.setToolTipText("Update check failed - click to retry. This does not block the game.");
+                    LauncherLog.writeException("launcher update check failed", exception);
                 }
             }
         }.execute();
@@ -783,9 +974,10 @@ public final class Main {
     }
 
     private void updateLauncher() {
-        if (availableUpdate == null) { refresh(); return; }
+        if (availableUpdate == null) { checkLauncherUpdate(); refresh(false); return; }
         installUpdate.setEnabled(false);
         settingsButton.setEnabled(false);
+        setUpdateStatusSuffix("");
         setStatus("Downloading launcher update...", GREEN, "Updating...");
         new SwingWorker<Boolean, Void>() {
             @Override protected Boolean doInBackground() throws Exception {
@@ -801,9 +993,9 @@ public final class Main {
                     availableUpdate = null;
                     installUpdate.setEnabled(true);
                     settingsButton.setEnabled(true);
-                    setStatus("UPDATE FAILED  -  " + exception.getMessage(), new Color(235, 105, 135),
-                        "Update failed.");
-                    LauncherLog.write("update failed: " + exception);
+                    String reason = safeMessage(exception, "Launcher update failed.");
+                    setStatus("UPDATE FAILED  -  " + reason, ERROR, reason);
+                    LauncherLog.writeException("launcher update failed", exception);
                 }
             }
         }.execute();
@@ -811,47 +1003,54 @@ public final class Main {
 
     private void launch() {
         play.setEnabled(false);
+        setUpdateStatusSuffix("");
         try {
             LauncherInstallation found = locator.locate();
             validator.validate(found);
             String custom = launchOptions.getText().trim();
-            // Project Zomboid owns its VM configuration. Do not pass a stale
-            // launcher preference that could compete with the game launcher.
-            String memory = "";
             GameLauncher.parseLaunchOptions(custom);
             preferences.put(PREF_LAUNCH_OPTIONS, custom);
-            setStatus("Launching Project Zomboid...", GREEN, "Launching...");
+            setStatus("Launching Project Zomboid...", GREEN, "Starting the verified Project Zomboid launcher.");
             gameLauncher.launch(found, debugMode.isSelected(), custom, "");
             window.dispose();
         } catch (LauncherException exception) {
-            setStatus("NOT READY  -  " + exception.getMessage(), new Color(235, 105, 135), "Blocked.");
-            LauncherLog.write("launch blocked: " + exception);
-            JOptionPane.showMessageDialog(window, exception.getMessage(),
+            String reason = safeMessage(exception, "Launch was blocked.");
+            setStatus("LAUNCH FAILED  -  " + reason, ERROR, reason);
+            LauncherLog.writeException("launch blocked", exception);
+            JOptionPane.showMessageDialog(window,
+                reason + "\n\nDiagnostic log:\n" + LauncherLog.path(),
                 "Knox Survivors", JOptionPane.WARNING_MESSAGE);
             play.setEnabled(true);
         } catch (Exception exception) {
-            String message = "Project Zomboid could not be launched. Verify Steam and the Workshop download, then try again.";
-            setStatus("NOT READY  -  " + message, new Color(235, 105, 135), "Launch failed.");
-            LauncherLog.write("launch failed: " + exception);
+            String reason = safeMessage(exception,
+                "Project Zomboid could not be launched. Verify Steam and the Workshop download, then try again.");
+            setStatus("LAUNCH FAILED  -  " + reason, ERROR, reason);
+            LauncherLog.writeException("launch failed", exception);
             JOptionPane.showMessageDialog(window,
-                message + "\n\nSupport log: " + LauncherLog.path(),
+                reason + "\n\nDiagnostic log:\n" + LauncherLog.path(),
                 "Knox Survivors", JOptionPane.ERROR_MESSAGE);
             play.setEnabled(true);
         }
     }
 
-    private String baseStatus = "";
-
     private void setStatus(String text, Color color, String tooltip) {
         baseStatus = text;
-        status.setText("<html><div style='text-align:center;width:440px'>"
-            + escapeHtml(text) + "</div></html>");
-        status.setForeground(color);
-        status.setToolTipText(tooltip);
+        baseStatusColor = color;
+        baseStatusTooltip = tooltip == null ? "" : tooltip;
+        renderStatus();
     }
 
-    private void appendStatus(String extra, Color color) {
-        setStatus(baseStatus + extra, color, status.getToolTipText());
+    private void setUpdateStatusSuffix(String suffix) {
+        updateStatusSuffix = suffix == null ? "" : suffix;
+        renderStatus();
+    }
+
+    private void renderStatus() {
+        String shown = baseStatus + updateStatusSuffix;
+        status.setText("<html><div style='text-align:center;width:440px'>"
+            + escapeHtml(shown) + "</div></html>");
+        status.setForeground(baseStatusColor);
+        status.setToolTipText(baseStatusTooltip + (updateStatusSuffix.isBlank() ? "" : updateStatusSuffix));
     }
 
     private static String escapeHtml(String value) {

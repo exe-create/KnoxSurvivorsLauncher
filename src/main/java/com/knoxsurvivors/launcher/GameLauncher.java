@@ -3,6 +3,7 @@ package com.knoxsurvivors.launcher;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 final class GameLauncher {
     Process launch(LauncherInstallation installation, boolean debugMode) throws LauncherException {
@@ -22,6 +23,8 @@ final class GameLauncher {
             .redirectErrorStream(true)
             .redirectOutput(ProcessBuilder.Redirect.DISCARD);
         String existing = builder.environment().getOrDefault("JAVA_TOOL_OPTIONS", "").trim();
+        LauncherLog.write("launch environment inheritedJavaToolOptions="
+            + (existing.isBlank() ? "none" : "present(" + existing.length() + " chars)"));
         // Keep Project Zomboid's normal launcher authoritative for VM flags.
         // Its own command line/configuration wins over JAVA_TOOL_OPTIONS; adding
         // -Xmx here would appear to work while silently being ignored. Knox
@@ -30,6 +33,10 @@ final class GameLauncher {
         ZombieBuddyCompatibility.Result zombieBuddy = ZombieBuddyCompatibility.inspect(installation);
         builder.environment().put("JAVA_TOOL_OPTIONS", options);
         try {
+            LauncherLog.write("launch attempt executable=" + command.get(0)
+                + " gameLauncher=" + installation.gameLauncher()
+                + " workingDirectory=" + installation.gameDirectory()
+                + " agent=" + installation.agentJar());
             Process process = builder.start();
             LauncherLog.write("launched platform=" + installation.platform()
                 + " game=" + installation.gameDirectory()
@@ -37,10 +44,30 @@ final class GameLauncher {
                 + " zombieBuddy=" + zombieBuddy.state()
                 + " debug=" + debugMode
                 + " customOptions=" + (customOptions == null || customOptions.isBlank() ? "none" : "set"));
+            try {
+                if (process.waitFor(1200, TimeUnit.MILLISECONDS)) {
+                    int exit = process.exitValue();
+                    LauncherLog.write("launcher process exited quickly code=" + exit);
+                    if (exit != 0) {
+                        throw new LauncherException(
+                            "Project Zomboid stopped immediately with exit code " + exit
+                                + ". Verify Project Zomboid through Steam and check the diagnostic log: "
+                                + LauncherLog.path()
+                        );
+                    }
+                }
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                LauncherLog.write("launch startup check interrupted");
+            }
             return process;
         } catch (IOException exception) {
+            LauncherLog.writeException("process start failed launcher=" + installation.gameLauncher(), exception);
+            String detail = exception.getMessage() == null || exception.getMessage().isBlank()
+                ? "Windows did not provide an error message." : exception.getMessage();
             throw new LauncherException(
-                "Project Zomboid could not be started. Verify the game through Steam and try again.",
+                "Project Zomboid could not be started: " + detail
+                    + " Verify the game through Steam and try again.",
                 exception
             );
         }

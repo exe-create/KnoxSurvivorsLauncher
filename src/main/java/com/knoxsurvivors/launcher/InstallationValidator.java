@@ -23,7 +23,12 @@ final class InstallationValidator {
         require(Files.isRegularFile(installation.gameLauncher()),
             "Project Zomboid's normal launcher is missing.");
         require(Files.isRegularFile(installation.gameDirectory().resolve("projectzomboid.jar")),
-            "Project Zomboid looks incomplete. Verify the game through Steam.");
+            "Project Zomboid looks incomplete: projectzomboid.jar is missing. Verify the game through Steam.");
+        if (installation.platform() == Platform.WINDOWS
+                && installation.gameLauncher().getFileName().toString().equalsIgnoreCase("ProjectZomboid64.bat")) {
+            require(Files.isRegularFile(installation.gameDirectory().resolve("jre64/bin/java.exe")),
+                "Project Zomboid's bundled Java runtime is missing (jre64\\bin\\java.exe). Verify the game through Steam.");
+        }
         validateModInfo(installation.modDirectory().resolve("mod.info"));
         validateModInfo(installation.modDirectory().resolve("42/mod.info"));
         Path buildInfo = installation.modDirectory().resolve("42/knox-runtime.properties");
@@ -33,12 +38,22 @@ final class InstallationValidator {
         try (InputStream input = Files.newInputStream(buildInfo)) {
             Properties marker = new Properties();
             marker.load(input);
-            require(EXPECTED_RUNTIME.equals(marker.getProperty("runtime")),
-                "The Workshop mod and launcher runtime are not compatible.");
-            require(LAUNCHER_COMPATIBILITY.equals(marker.getProperty("launcherCompatibility")),
-                "This launcher and the Workshop build are different versions. Download the latest launcher release.");
+            String runtimeType = marker.getProperty("runtime", "").trim();
+            String compatibility = marker.getProperty("launcherCompatibility", "").trim();
+            require(EXPECTED_RUNTIME.equals(runtimeType),
+                "The Workshop runtime type is '" + runtimeType + "' but this launcher expects '"
+                    + EXPECTED_RUNTIME + "'. Update the Workshop mod and launcher together.");
+            require(LAUNCHER_COMPATIBILITY.equals(compatibility),
+                "The Workshop launcher compatibility is '" + compatibility + "' but this launcher expects '"
+                    + LAUNCHER_COMPATIBILITY + "'. Download the latest launcher release.");
             String runtimeVersion = marker.getProperty("runtimeVersion", "").trim();
-            require(!runtimeVersion.isEmpty(), "The Workshop runtime version is missing.");
+            require(!runtimeVersion.isEmpty(), "The Workshop runtime version is missing from knox-runtime.properties.");
+            String workshopVersion = modInfoVersion(installation.modDirectory().resolve("mod.info"));
+            if (!workshopVersion.isEmpty()) {
+                require(workshopVersion.equals(runtimeVersion),
+                    "The Workshop mod reports version " + workshopVersion + " but the runtime reports "
+                        + runtimeVersion + ". Let Steam finish updating the mod.");
+            }
             validateAgent(installation.agentJar(), runtimeVersion);
         } catch (IOException exception) {
             throw new LauncherException("The Knox runtime marker could not be read.", exception);
@@ -56,6 +71,19 @@ final class InstallationValidator {
         }
     }
 
+
+    private static String modInfoVersion(Path file) {
+        try {
+            for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
+                String trimmed = line.trim();
+                if (trimmed.regionMatches(true, 0, "version=", 0, 8)) {
+                    return trimmed.substring(8).trim();
+                }
+            }
+        } catch (IOException ignored) {
+        }
+        return "";
+    }
     private static void validateAgent(Path jar, String runtimeVersion) throws LauncherException {
         require(jar != null && Files.isRegularFile(jar), "The Knox Java runtime is missing.");
         try (JarFile archive = new JarFile(jar.toFile())) {
@@ -64,8 +92,10 @@ final class InstallationValidator {
             Attributes attributes = archive.getManifest().getMainAttributes();
             require(EXPECTED_PREMAIN.equals(attributes.getValue("Premain-Class")),
                 "The Knox Java runtime has an invalid launcher manifest.");
-            require(runtimeVersion.equals(attributes.getValue("Implementation-Version")),
-                "The Workshop mod and Knox Java runtime versions do not match. Let Steam finish updating and try again.");
+            String actualVersion = attributes.getValue("Implementation-Version");
+            require(runtimeVersion.equals(actualVersion),
+                "The Workshop expects runtime " + runtimeVersion + " but knox-agent.jar reports "
+                    + String.valueOf(actualVersion) + ". Let Steam finish updating and try again.");
         } catch (IOException exception) {
             throw new LauncherException("The Knox Java runtime could not be opened.", exception);
         }
@@ -80,7 +110,8 @@ final class InstallationValidator {
                 actual = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(input.readAllBytes()));
             }
             require(expected.equals(actual),
-                "The Knox Java runtime did not pass its checksum. Verify the Workshop item through Steam.");
+                "The Knox Java runtime checksum does not match the Workshop checksum. "
+                    + "Verify the Workshop item through Steam.");
         } catch (IOException | NoSuchAlgorithmException exception) {
             throw new LauncherException("The Knox Java runtime checksum could not be verified.", exception);
         }

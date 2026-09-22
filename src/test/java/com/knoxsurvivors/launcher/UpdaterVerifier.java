@@ -17,9 +17,9 @@ final class UpdaterVerifier {
         check(LauncherUpdater.compare("v0.2.3-preview.10", "0.2.3-preview.2") > 0, "numeric prerelease ordering");
         check(LauncherUpdater.compare("0.2.3", "0.2.3-preview.10") > 0, "stable follows preview");
         check(LauncherUpdater.compare("99999999999999999999.0.0", "1.0.0") > 0, "large version does not overflow");
-        var update = LauncherUpdater.select("[" + release("v0.3.0-rc1", false) + ","
-            + release("v0.3.0-rc2", false) + "," + release("v9.0.0", true) + "]");
-        check(update != null && update.version().equals("v0.3.0-rc2"), "select newest complete non-draft release");
+        var update = LauncherUpdater.select("[" + release("v0.3.0-rc2", false) + ","
+            + release("v0.3.0-rc4", false) + "," + release("v9.0.0", true) + "]");
+        check(update != null && update.version().equals("v0.3.0-rc4"), "select newest complete non-draft release");
         check(LauncherUpdater.select("[" + release("v0.3.0-beta.9", false) + "]") == null, "no stale update");
         check(LauncherUpdater.select("[" + release("v0.2.4", false).replace(
             "exe-create/KnoxSurvivorsLauncher/releases/download", "other/repo/releases/download") + "]") == null,

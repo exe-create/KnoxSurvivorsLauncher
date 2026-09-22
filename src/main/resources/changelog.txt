@@ -1,6 +1,13 @@
+[0.3.0-rc3] Launcher reliability + diagnostics
+- Windows launch keeps the working ProjectZomboid64.bat / bundled-Java route.
+- System-check dots now use green only for verified checks, amber for checking/warnings, and red only for real failures.
+- Checks update as they finish instead of waiting for the whole scan.
+- Version/checksum/memory failures now explain what is wrong and write deeper diagnostics to launcher.log.
+- The current Java NPC build is launcher-started; direct Steam startup is not advertised as equivalent.
+
 [0.3.0-rc1] Release candidate
 - Updated for the stable Workshop runtime filename: knox-agent.jar.
-- Steam and launcher startup are now documented as equal supported choices on Windows.
+- A direct Steam startup path was tested during this release cycle; the launcher remains the supported Java-runtime startup method.
 - Clarified which normal Project Zomboid settings carry over automatically and which launcher-only options must be copied into Steam.
 - Refreshed public release documentation and version metadata.
 

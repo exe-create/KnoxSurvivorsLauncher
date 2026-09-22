@@ -1,6 +1,8 @@
 package com.knoxsurvivors.launcher;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,11 +22,33 @@ final class LauncherLog {
     }
 
     static void write(String message) {
-        String line = Instant.now() + " [KnoxSurvivorsLauncher] " + message
-            + System.lineSeparator();
+        append(Instant.now() + " [KnoxSurvivorsLauncher] " + message + System.lineSeparator());
+    }
+
+    static void writeException(String context, Throwable problem) {
+        if (problem == null) {
+            write(context + ": <no exception details>");
+            return;
+        }
+        write(context + ": " + problem);
+        StringWriter buffer = new StringWriter();
+        problem.printStackTrace(new PrintWriter(buffer));
+        for (String line : buffer.toString().split("\\R")) {
+            append(Instant.now() + " [KnoxSurvivorsLauncher][detail] " + line + System.lineSeparator());
+        }
+    }
+
+    static void sessionSnapshot() {
+        write("diagnostic javaHome=" + System.getProperty("java.home")
+            + " cwd=" + System.getProperty("user.dir")
+            + " userHome=" + System.getProperty("user.home")
+            + " arch=" + System.getProperty("os.arch"));
+    }
+
+    private static void append(String text) {
         try {
             Files.createDirectories(PATH.getParent());
-            Files.writeString(PATH, line, StandardCharsets.UTF_8,
+            Files.writeString(PATH, text, StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (IOException ignored) {
             // Logging must never prevent the game from launching.

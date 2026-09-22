@@ -44,6 +44,8 @@ public final class LauncherVerifier {
         Files.createDirectories(jar.getParent());
         Files.writeString(game.resolve("projectzomboid.jar"), "test");
         Files.writeString(game.resolve("ProjectZomboid64.bat"), "@echo off");
+        Files.createDirectories(game.resolve("jre64/bin"));
+        Files.writeString(game.resolve("jre64/bin/java.exe"), "fixture");
         Files.writeString(mod.resolve("mod.info"), "name=Knox Survivors\nid=KnoxSurvivors\n");
         Files.copy(mod.resolve("mod.info"), mod.resolve("42/mod.info"));
         Files.writeString(mod.resolve("42/knox-runtime.properties"),
@@ -66,10 +68,14 @@ public final class LauncherVerifier {
         Files.writeString(config, configured);
         LauncherInstallation nativeFound = new SteamLocator().locateFromRoots(
             List.of(gameRoot, workshopRoot), Platform.WINDOWS);
-        require(nativeFound.gameLauncher().equals(nativeLauncher), "native configured launcher must precede alternate BAT");
-        List<String> nativeCommand = GameLauncher.command(nativeFound, true, "-novoip -nosound");
-        require(nativeCommand.equals(List.of(nativeLauncher.toString(), "-debug", "-novoip", "-nosound")),
-            "native launcher must receive direct arguments without batch limits or heap overrides");
+        Path batchLauncher = game.resolve("ProjectZomboid64.bat");
+        require(nativeFound.gameLauncher().equals(batchLauncher),
+            "Windows must prefer the bundled-Java BAT launcher when Knox agent injection is required");
+        List<String> batchCommand = GameLauncher.command(nativeFound, true, "-novoip");
+        require(batchCommand.get(0).toLowerCase(java.util.Locale.ROOT).contains("cmd"),
+            "Windows BAT launcher must run through cmd");
+        require(batchCommand.get(batchCommand.size() - 1).contains(batchLauncher.toString()),
+            "Windows BAT command must include the Project Zomboid BAT path");
         require(Files.readString(config).equals(configured), "user memory configuration must remain untouched");
     }
 
@@ -86,6 +92,8 @@ public final class LauncherVerifier {
         Files.createDirectories(jar.getParent());
         Files.writeString(game.resolve("projectzomboid.jar"), "test");
         Files.writeString(game.resolve("ProjectZomboid64.bat"), "@echo off");
+        Files.createDirectories(game.resolve("jre64/bin"));
+        Files.writeString(game.resolve("jre64/bin/java.exe"), "fixture");
         Files.writeString(mod.resolve("mod.info"), "name=Knox Survivors\nid=KnoxSurvivors\n");
         Files.copy(mod.resolve("mod.info"), mod.resolve("42/mod.info"));
         Files.writeString(mod.resolve("42/knox-runtime.properties"),
@@ -140,6 +148,8 @@ public final class LauncherVerifier {
         Files.createDirectories(game);
         Files.writeString(game.resolve("projectzomboid.jar"), "test");
         Files.writeString(game.resolve("ProjectZomboid64.bat"), "@echo off");
+        Files.createDirectories(game.resolve("jre64/bin"));
+        Files.writeString(game.resolve("jre64/bin/java.exe"), "fixture");
         Files.writeString(game.resolve("projectzomboid.sh"), "#!/bin/sh");
         Files.writeString(mod.resolve("mod.info"), "name=Knox Survivors\nid=KnoxSurvivors\n");
         Files.copy(mod.resolve("mod.info"), mod.resolve("42/mod.info"));
@@ -188,7 +198,7 @@ public final class LauncherVerifier {
         expectFailure(() -> validator.validate(installation), "checksum is missing");
         Files.writeString(checksum, goodChecksum);
         createAgent(jar, "other-version");
-        expectFailure(() -> validator.validate(installation), "versions do not match");
+        expectFailure(() -> validator.validate(installation), "expects runtime");
         try (JarOutputStream output = new JarOutputStream(Files.newOutputStream(jar))) { }
         expectFailure(() -> validator.validate(installation), "no launcher manifest");
         createAgent(jar, "0.2.0");
@@ -199,7 +209,7 @@ public final class LauncherVerifier {
         Path marker = mod.resolve("42/knox-runtime.properties");
         String goodMarker = Files.readString(marker);
         Files.writeString(marker, goodMarker.replace("launcherCompatibility=1", "launcherCompatibility=2"));
-        expectFailure(() -> validator.validate(installation), "different versions");
+        expectFailure(() -> validator.validate(installation), "launcher compatibility");
         Files.delete(marker);
         expectFailure(() -> validator.validate(installation), "missing the current Knox runtime");
         Files.writeString(marker, goodMarker);

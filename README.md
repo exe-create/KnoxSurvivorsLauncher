@@ -2,11 +2,11 @@
 
 [![Windows, Linux, and macOS checks](https://github.com/exe-create/KnoxSurvivorsLauncher/actions/workflows/release.yml/badge.svg)](https://github.com/exe-create/KnoxSurvivorsLauncher/actions/workflows/release.yml)
 
-The Knox Survivors Launcher is an **optional** companion launcher for the Project Zomboid Build 42 Knox Survivors human-NPC rebuild.
+The Knox Survivors Launcher starts the current Project Zomboid Build 42 Knox Survivors Java NPC runtime. Steam Workshop still installs and updates the mod; the launcher handles the runtime check and game startup.
 
-Knox Survivors can now be started directly through Steam on Windows with the Workshop launch option documented on the mod page. This launcher remains available for players who want automatic install/runtime verification, multiple-Steam-library detection, custom launch options, debug-mode control, or the packaged Linux/macOS startup path.
+For the current Java build, the launcher is the supported startup method. A future Workshop-native runtime is being investigated separately, but users should not need to edit Java, Windows PATH, Steam launch options, or Project Zomboid files for this launcher build.
 
-**Launcher version:** `0.3.0-rc1`
+**Launcher version:** `0.3.0-rc3`
 
 ## What the launcher does
 
@@ -35,25 +35,11 @@ It does **not** patch Project Zomboid, modify Steam, require administrator acces
 6. Press **PLAY KNOX SURVIVORS**.
 7. Enable Knox Survivors for the save in Project Zomboid.
 
-Use either the launcher **or** the Steam-only Knox Java launch option, not both.
-
-## Steam-only startup and settings
-
-If you switch from this launcher to the direct Steam method, your normal Project Zomboid data is not moved or reset. Saves, sandbox settings, mod settings and Project Zomboid's own memory configuration stay in the same normal PZ locations because both methods ultimately start the normal game.
-
-One setting is launcher-specific: **Custom Launch Options**. It is stored by the launcher for later launcher starts. Steam cannot read that launcher preference automatically. If you used a custom option such as:
-
-```text
--cachedir="D:\Zomboid"
-```
-
-copy the same game argument into Steam's launch-options field after the final `--` when moving to the Steam-only method. The launcher's Debug checkbox is also a launcher-time choice; use Project Zomboid's normal `-debug` argument in Steam if you want the same behavior there.
-
 ## Custom launch options
 
 The **Custom Launch Options** field is for game arguments you would otherwise add to Project Zomboid's Steam launch options. The value is remembered for later launcher starts.
 
-On Windows, the launcher prefers the native `ProjectZomboid64.exe`, which receives game arguments directly and uses `ProjectZomboid64.json`. If it must fall back to the game's alternate BAT launcher, Project Zomboid's BAT currently forwards at most two game options; the Knox launcher rejects extras rather than silently dropping them. Debug mode counts as one option in that fallback case.
+On Windows, the launcher intentionally prefers `ProjectZomboid64.bat` so Project Zomboid's bundled Java runtime is used consistently with the Knox Java agent. The BAT currently forwards at most two game options; the Knox launcher rejects extras rather than silently dropping them. Debug mode counts as one option.
 
 For safety, Windows shell operators and environment-variable expressions are rejected in custom options. Enter expanded paths instead of `%USERPROFILE%`-style variables.
 

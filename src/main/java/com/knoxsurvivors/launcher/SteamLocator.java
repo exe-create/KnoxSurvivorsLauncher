@@ -212,14 +212,17 @@ final class SteamLocator {
     private static Path agentJar(Path workshop) throws LauncherException {
         try (Stream<Path> paths = Files.walk(workshop, 6)) {
             List<Path> jars = paths.filter(Files::isRegularFile)
-                .filter(path -> path.getFileName().toString().startsWith("knox-agent-"))
-                .filter(path -> path.getFileName().toString().endsWith(".jar"))
+                .filter(path -> {
+                    String name = path.getFileName().toString();
+                    return name.equals("knox-agent.jar")
+                        || (name.startsWith("knox-agent-") && name.endsWith(".jar"));
+                })
                 .toList();
             if (jars.size() == 1) return jars.get(0);
             if (jars.isEmpty()) {
                 throw new LauncherException(
-                    "This Workshop download is the older Knox Survivors build and does not include "
-                        + "the IsoPlayer Java runtime yet. Wait for the rebuild update, then let Steam download it."
+                    "This Workshop download does not include the current Knox Java runtime. "
+                        + "Let Steam finish updating or verify the Workshop item."
                 );
             }
             throw new LauncherException(

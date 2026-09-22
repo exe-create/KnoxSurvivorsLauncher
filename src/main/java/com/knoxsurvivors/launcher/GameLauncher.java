@@ -84,7 +84,8 @@ final class GameLauncher {
     }
 
     private static boolean containsKnoxAgent(String options) {
-        return options.toLowerCase(java.util.Locale.ROOT).contains("knox-agent-");
+        String value = options.toLowerCase(java.util.Locale.ROOT);
+        return value.contains("knox-agent.jar") || value.contains("knox-agent-");
     }
 
     private static boolean containsZombieBuddyAgent(String options) {

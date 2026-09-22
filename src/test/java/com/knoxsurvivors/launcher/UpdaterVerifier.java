@@ -17,10 +17,10 @@ final class UpdaterVerifier {
         check(LauncherUpdater.compare("v0.2.3-preview.10", "0.2.3-preview.2") > 0, "numeric prerelease ordering");
         check(LauncherUpdater.compare("0.2.3", "0.2.3-preview.10") > 0, "stable follows preview");
         check(LauncherUpdater.compare("99999999999999999999.0.0", "1.0.0") > 0, "large version does not overflow");
-        var update = LauncherUpdater.select("[" + release("v0.2.3-preview.3", false) + ","
-            + release("v0.2.3-preview.10", false) + "," + release("v9.0.0", true) + "]");
-        check(update != null && update.version().equals("v0.2.3-preview.10"), "select newest complete non-draft release");
-        check(LauncherUpdater.select("[" + release("v0.2.3-preview.2", false) + "]") == null, "no stale update");
+        var update = LauncherUpdater.select("[" + release("v0.3.0-rc1", false) + ","
+            + release("v0.3.0-rc2", false) + "," + release("v9.0.0", true) + "]");
+        check(update != null && update.version().equals("v0.3.0-rc2"), "select newest complete non-draft release");
+        check(LauncherUpdater.select("[" + release("v0.3.0-beta.9", false) + "]") == null, "no stale update");
         check(LauncherUpdater.select("[" + release("v0.2.4", false).replace(
             "exe-create/KnoxSurvivorsLauncher/releases/download", "other/repo/releases/download") + "]") == null,
             "reject assets in another repository");
@@ -36,8 +36,8 @@ final class UpdaterVerifier {
         reject(() -> ReleaseJson.parse("[1,]"));
         check(ReleaseJson.parse("\"\\u004b\\n\"").equals("K\n"), "JSON escapes");
         var home = root.resolve("updater-cache-test");
-        var good = cache(home, "v0.2.4", "0.2.4");
-        cache(home, "v0.2.5", "wrong-manifest-version");
+        var good = cache(home, "v0.3.0", "0.3.0");
+        cache(home, "v0.3.1", "wrong-manifest-version");
         check(new LauncherUpdater(home).cachedUpdate().equals(good),
             "corrupt newer cache falls back to verified cache and accepts v-prefixed release tags");
         java.nio.file.Files.writeString(good, "tampered");

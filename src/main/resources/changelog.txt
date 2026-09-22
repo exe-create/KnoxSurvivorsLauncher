@@ -1,3 +1,9 @@
+[0.3.0-rc1] Release candidate
+- Updated for the stable Workshop runtime filename: knox-agent.jar.
+- Steam and launcher startup are now documented as equal supported choices on Windows.
+- Clarified which normal Project Zomboid settings carry over automatically and which launcher-only options must be copied into Steam.
+- Refreshed public release documentation and version metadata.
+
 [0.2.3-preview.3] Launcher refresh
 - Keyed-art PLAY / INSTALL-UPDATE / SETTINGS buttons over the art.
 - 16:9 background with cover-fit scaling and readability dim.

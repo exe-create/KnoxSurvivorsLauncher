@@ -1,38 +1,37 @@
-KNOX SURVIVORS LAUNCHER
+KNOX SURVIVORS LAUNCHER 0.3.0-rc1
 
+The launcher is optional. Knox Survivors can also be started directly through Steam on
+Windows using the launch option on the Workshop page. Use ONE startup method, not both.
+
+LAUNCHER METHOD
 1. Install Project Zomboid through Steam.
-2. Subscribe to Knox Survivors on Steam Workshop:
-   https://steamcommunity.com/sharedfiles/filedetails/?id=3749727604
+2. Subscribe to Knox Survivors (Workshop ID 3749727604).
 3. Let Steam finish downloading the mod.
 4. Extract this entire launcher archive.
 5. Windows: double-click "Launch Knox Survivors.cmd".
-   Linux: open a terminal here and run scripts/launch-knox-survivors.sh.
+   Linux: run scripts/launch-knox-survivors.sh.
    macOS: double-click "Launch Knox Survivors.command".
 6. Press PLAY KNOX SURVIVORS.
-7. In Project Zomboid, make sure Knox Survivors is enabled for your save.
+7. Enable Knox Survivors for the save in Project Zomboid.
 
-Optional debug mode: select "Enable Project Zomboid Debug Mode" before pressing Play.
-This passes the normal -debug option to Project Zomboid and is off by default.
+The launcher verifies the Workshop mod/runtime and starts the normal Project Zomboid
+executable with the Knox Java agent enabled only for that game process. It does not
+change Project Zomboid's configured memory, request administrator access, or set a
+permanent system environment variable.
 
-Always start Project Zomboid through this launcher when using the IsoPlayer rebuild.
+SWITCHING TO STEAM-ONLY
+Normal Project Zomboid saves, sandbox/mod settings and memory configuration stay in their
+normal PZ locations. The launcher's Custom Launch Options preference is launcher-specific,
+so copy any custom game arguments you still need into Steam after the final --. The Debug
+checkbox is also launcher-specific; use the normal -debug game argument in Steam instead.
 
-OPTIONAL ZOMBIEBUDDY COMPATIBILITY
+OPTIONAL ZOMBIEBUDDY
+ZombieBuddy is not required. If a valid installation is present, the launcher preserves
+its compatible agent configuration and places it before Knox.
 
-ZombieBuddy is not required. If you use it, complete ZombieBuddy's own installation first;
-subscribing to its Workshop item alone is not enough. The Knox launcher will detect a valid
-installed ZombieBuddy agent, preserve its options, and start it before Knox. If its own
-platform launcher also supplies the agent later, ZombieBuddy's
-duplicate guard ignores that later entry. You do not need to edit ProjectZomboid64.bat for Knox.
-
-The launcher uses Project Zomboid's own bundled Java runtime. You do not need to install
-Java 17 separately. It does not modify the game, request administrator access, or set
-permanent system options. Steam Workshop installs and updates the mod; this launcher
-verifies those files and enables the required Java agent only for the game process it starts.
-
-If the launcher says the Workshop build is still the older release, the IsoPlayer rebuild
-has not been published to Workshop yet. The launcher will intentionally refuse to mix the
-old mod with the new Java runtime.
-
-If something fails, include this support log with your report:
+SUPPORT LOG
 Windows: %USERPROFILE%\KnoxSurvivors\launcher.log
 Linux/macOS: ~/KnoxSurvivors/launcher.log
+
+Workshop: https://steamcommunity.com/sharedfiles/filedetails/?id=3749727604
+Launcher releases: https://github.com/exe-create/KnoxSurvivorsLauncher/releases

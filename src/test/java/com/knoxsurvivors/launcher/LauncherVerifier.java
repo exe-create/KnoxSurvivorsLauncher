@@ -38,7 +38,7 @@ public final class LauncherVerifier {
         Path game = gameRoot.resolve("steamapps/common/ProjectZomboid");
         Path workshop = workshopRoot.resolve("steamapps/workshop/content/108600/3749727604");
         Path mod = workshop.resolve("mods/KnoxSurvivors");
-        Path jar = mod.resolve("java/knox-agent-test.jar");
+        Path jar = mod.resolve("java/knox-agent.jar");
         Files.createDirectories(game);
         Files.createDirectories(mod.resolve("42"));
         Files.createDirectories(jar.getParent());
@@ -80,7 +80,7 @@ public final class LauncherVerifier {
         Path workshop = workshopLibrary.resolve("steamapps/workshop/content/108600/3749727604");
         // Steam distributes the contents of Contents, without that parent directory.
         Path mod = workshop.resolve("mods/KnoxSurvivors");
-        Path jar = mod.resolve("java/knox-agent-test.jar");
+        Path jar = mod.resolve("java/knox-agent.jar");
         Files.createDirectories(game);
         Files.createDirectories(mod.resolve("42"));
         Files.createDirectories(jar.getParent());
@@ -201,7 +201,7 @@ public final class LauncherVerifier {
         Files.writeString(marker, goodMarker.replace("launcherCompatibility=1", "launcherCompatibility=2"));
         expectFailure(() -> validator.validate(installation), "different versions");
         Files.delete(marker);
-        expectFailure(() -> validator.validate(installation), "older Knox Survivors release");
+        expectFailure(() -> validator.validate(installation), "missing the current Knox runtime");
         Files.writeString(marker, goodMarker);
         validator.validate(installation);
     }
@@ -211,7 +211,8 @@ public final class LauncherVerifier {
         List<Path> jars;
         try (var files = Files.walk(contents, 6)) {
             jars = files.filter(Files::isRegularFile)
-                .filter(path -> path.getFileName().toString().matches("knox-agent-.*\\.jar"))
+                .filter(path -> (path.getFileName().toString().equals("knox-agent.jar")
+                    || path.getFileName().toString().matches("knox-agent-.*\\.jar")))
                 .toList();
         }
         require(jars.size() == 1, "published Contents must contain exactly one agent");

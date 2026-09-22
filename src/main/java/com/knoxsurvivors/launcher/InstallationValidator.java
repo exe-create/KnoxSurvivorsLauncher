@@ -28,8 +28,8 @@ final class InstallationValidator {
         validateModInfo(installation.modDirectory().resolve("42/mod.info"));
         Path buildInfo = installation.modDirectory().resolve("42/knox-runtime.properties");
         require(Files.isRegularFile(buildInfo),
-            "The subscribed Workshop item is still the older Knox Survivors release. "
-                + "The IsoPlayer rebuild has not been published there yet.");
+            "The subscribed Workshop package is missing the current Knox runtime. "
+                + "Let Steam finish updating or verify the Workshop files.");
         try (InputStream input = Files.newInputStream(buildInfo)) {
             Properties marker = new Properties();
             marker.load(input);

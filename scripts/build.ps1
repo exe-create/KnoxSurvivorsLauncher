@@ -18,7 +18,7 @@ if (Test-Path -LiteralPath $resources) {
         Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $classes $_.Name) -Force
     }
 }
-@("Manifest-Version: 1.0", "Main-Class: com.knoxsurvivors.launcher.Main", "Implementation-Version: 0.2.3-preview.3", "Knox-Update-Protocol: 1", "") | Set-Content (Join-Path $build 'MANIFEST.MF') -Encoding ascii
+@("Manifest-Version: 1.0", "Main-Class: com.knoxsurvivors.launcher.Main", "Implementation-Version: 0.3.0-rc1", "Knox-Update-Protocol: 1", "") | Set-Content (Join-Path $build 'MANIFEST.MF') -Encoding ascii
 & jar --create --file (Join-Path $root 'KnoxSurvivorsLauncher.jar') --manifest (Join-Path $build 'MANIFEST.MF') -C $classes .
 if ($LASTEXITCODE -ne 0) { throw 'Launcher packaging failed.' }
 & javac --release 17 -cp $classes -d $testClasses $tests

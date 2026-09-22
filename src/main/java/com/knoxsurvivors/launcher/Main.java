@@ -490,7 +490,7 @@ public final class Main {
                 Path buildInfo = found.modDirectory().resolve("42/knox-runtime.properties");
                 if (!Files.isRegularFile(buildInfo)) {
                     out.modOk = false;
-                    out.modDetail = "Older Workshop release - rebuild not published yet.";
+                    out.modDetail = "Workshop package is missing the current Knox runtime - let Steam finish updating or verify the Workshop files.";
                 } else {
                     java.util.Properties marker = new java.util.Properties();
                     try (InputStream input = Files.newInputStream(buildInfo)) {

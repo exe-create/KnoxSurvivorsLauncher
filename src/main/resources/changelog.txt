@@ -1,3 +1,9 @@
+[0.3.0] First official launcher release
+- Promoted the rc3 reliability/diagnostic work to the first stable launcher release.
+- Windows uses Project Zomboid's bundled-Java BAT route for reliable Knox agent startup.
+- System checks report verified/warning/failure states immediately and write detailed failure reasons to launcher.log.
+- Workshop install/runtime validation, update checks, custom launch options and cross-platform packages remain included.
+
 [0.3.0-rc3] Launcher reliability + diagnostics
 - Windows launch keeps the working ProjectZomboid64.bat / bundled-Java route.
 - System-check dots now use green only for verified checks, amber for checking/warnings, and red only for real failures.

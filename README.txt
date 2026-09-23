@@ -1,4 +1,4 @@
-KNOX SURVIVORS LAUNCHER 0.3.0
+KNOX SURVIVORS LAUNCHER 0.3.1
 
 The current Knox Survivors Java NPC runtime is started through this launcher.
 Steam Workshop still installs and updates the mod itself.

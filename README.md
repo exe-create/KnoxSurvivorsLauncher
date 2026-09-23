@@ -6,7 +6,7 @@ The Knox Survivors Launcher starts the current Project Zomboid Build 42 Knox Sur
 
 For the current Java build, the launcher is the supported startup method. A future Workshop-native runtime is being investigated separately, but users should not need to edit Java, Windows PATH, Steam launch options, or Project Zomboid files for this launcher build.
 
-**Launcher version:** `0.3.0`
+**Launcher version:** `0.3.1`
 
 ## What the launcher does
 

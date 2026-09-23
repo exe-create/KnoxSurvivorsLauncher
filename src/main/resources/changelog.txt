@@ -1,3 +1,8 @@
+[0.3.1] Runtime isolation fix
+- Updated launcher validation for the current ZombieBuddy-compatible Knox Workshop runtime.
+- Prevented Knox and ZombieBuddy patch systems from loading together in one game process.
+- Fixed Windows release checksum generation and refreshed launcher verification coverage.
+
 [0.3.0] First official launcher release
 - Promoted the rc3 reliability/diagnostic work to the first stable launcher release.
 - Windows uses Project Zomboid's bundled-Java BAT route for reliable Knox agent startup.

@@ -4,7 +4,7 @@ Prepare a draft with these checks. Publish it only after the matching Knox Survi
 Workshop build is uploaded and verified from a normal subscribed installation.
 
 1. Confirm the upload has `Contents/mods/KnoxSurvivors/42/knox-runtime.properties` and exactly one agent JAR plus checksum in `Contents/mods/KnoxSurvivors/java/`. Steam distributes the contents of `Contents`, not the parent folder.
-2. Confirm `launcherCompatibility=1` and that `runtimeVersion` matches the agent JAR manifest version.
+2. Confirm `runtime=zombie-buddy-java-mod-v1`, `legacyAgentCompatible=true`, and that `runtimeVersion` matches the agent JAR manifest version.
 3. Test the staged Workshop package and launcher on Windows.
    - If publishing ZombieBuddy compatibility, test no-install, valid install, existing
      BAT configuration, JSON custom options, and ZombieBuddy + FastLoading live together.

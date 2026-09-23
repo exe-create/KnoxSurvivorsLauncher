@@ -14,8 +14,8 @@ import java.util.jar.JarFile;
 
 final class InstallationValidator {
     private static final String EXPECTED_PREMAIN = "com.knoxsurvivors.agent.KnoxAgent";
-    private static final String EXPECTED_RUNTIME = "iso-player-agent-v1";
-    private static final String LAUNCHER_COMPATIBILITY = "1";
+    private static final String EXPECTED_RUNTIME = "zombie-buddy-java-mod-v1";
+    private static final String LEGACY_AGENT_COMPATIBILITY = "true";
 
     void validate(LauncherInstallation installation) throws LauncherException {
         require(Files.isDirectory(installation.gameDirectory()),
@@ -39,13 +39,13 @@ final class InstallationValidator {
             Properties marker = new Properties();
             marker.load(input);
             String runtimeType = marker.getProperty("runtime", "").trim();
-            String compatibility = marker.getProperty("launcherCompatibility", "").trim();
+            String compatibility = marker.getProperty("legacyAgentCompatible", "").trim();
             require(EXPECTED_RUNTIME.equals(runtimeType),
                 "The Workshop runtime type is '" + runtimeType + "' but this launcher expects '"
                     + EXPECTED_RUNTIME + "'. Update the Workshop mod and launcher together.");
-            require(LAUNCHER_COMPATIBILITY.equals(compatibility),
-                "The Workshop launcher compatibility is '" + compatibility + "' but this launcher expects '"
-                    + LAUNCHER_COMPATIBILITY + "'. Download the latest launcher release.");
+            require(LEGACY_AGENT_COMPATIBILITY.equalsIgnoreCase(compatibility),
+                "The Workshop runtime is not compatible with the Knox Launcher. "
+                    + "Update the Workshop mod and launcher together.");
             String runtimeVersion = marker.getProperty("runtimeVersion", "").trim();
             require(!runtimeVersion.isEmpty(), "The Workshop runtime version is missing from knox-runtime.properties.");
             String workshopVersion = modInfoVersion(installation.modDirectory().resolve("mod.info"));

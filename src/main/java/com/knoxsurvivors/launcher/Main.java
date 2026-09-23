@@ -573,15 +573,14 @@ public final class Main {
                     if (workshopVersion.isEmpty()) workshopVersion = build42Version;
                     if (workshopVersion.isEmpty()) workshopVersion = runtimeVersion;
                     String runtimeType = marker.getProperty("runtime", "").trim();
-                    String compatibility = marker.getProperty("launcherCompatibility", "").trim();
-                    if (!"iso-player-agent-v1".equals(runtimeType)) {
+                    String compatibility = marker.getProperty("legacyAgentCompatible", "").trim();
+                    if (!"zombie-buddy-java-mod-v1".equals(runtimeType)) {
                         out.modState = CheckState.ERROR;
                         out.modDetail = "Workshop runtime type is '" + runtimeType
-                            + "' but this launcher expects iso-player-agent-v1.";
-                    } else if (!"1".equals(compatibility)) {
+                            + "' but this launcher expects zombie-buddy-java-mod-v1.";
+                    } else if (!"true".equalsIgnoreCase(compatibility)) {
                         out.modState = CheckState.ERROR;
-                        out.modDetail = "Workshop launcher compatibility is '" + compatibility
-                            + "' but this launcher expects 1.";
+                        out.modDetail = "Workshop runtime is not compatible with the Knox Launcher.";
                     } else if (runtimeVersion.isEmpty()) {
                         out.modState = CheckState.ERROR;
                         out.modDetail = "Workshop runtime version is missing.";
@@ -886,8 +885,18 @@ public final class Main {
                     workshopHelp.setVisible(outcome.failure != null && isWorkshopFailure(outcome.failure));
                     if (outcome.failure == null && outcome.criticalChecksPassed()) {
                         var zombieBuddy = ZombieBuddyCompatibility.inspect(installation);
-                        String optional = zombieBuddy.enabled() || zombieBuddy.state().equals("enabled-by-game-launcher")
-                            ? "  -  ZombieBuddy detected" : "";
+                        if (zombieBuddy.active()) {
+                            String reason = "ZombieBuddy is active; launch normally with ZombieBuddy or disable it to use this launcher.";
+                            setStatus("NOT READY  -  " + reason, ERROR, reason);
+                            play.setEnabled(false);
+                            play.setToolTipText(reason);
+                            LauncherLog.write("verification blocked: active ZombieBuddy runtime");
+                            installUpdate.setEnabled(true);
+                            settingsButton.setEnabled(true);
+                            return;
+                        }
+                        String optional = zombieBuddy.installed()
+                            ? "  -  ZombieBuddy installed but inactive" : "";
                         if (outcome.hasWarning()) {
                             setStatus("READY WITH WARNING  -  checks passed; review the amber item" + optional,
                                 WARNING, "Ready to launch, but one non-blocking check needs attention.");

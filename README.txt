@@ -26,9 +26,10 @@ more detailed diagnostic log here:
 Windows: %USERPROFILE%\KnoxSurvivors\launcher.log
 Linux/macOS: ~/KnoxSurvivors/launcher.log
 
-OPTIONAL ZOMBIEBUDDY
-ZombieBuddy is not required. If a valid installation is present, the launcher preserves
-its compatible agent configuration and places it before Knox.
+ZOMBIEBUDDY
+ZombieBuddy is not required. Choose one runtime per launch. Launch normally with
+ZombieBuddy, or disable its game-launcher configuration before using the Knox Launcher.
+An installed but inactive ZombieBuddy copy is allowed.
 
 Workshop: https://steamcommunity.com/sharedfiles/filedetails/?id=3749727604
 Launcher releases: https://github.com/exe-create/KnoxSurvivorsLauncher/releases

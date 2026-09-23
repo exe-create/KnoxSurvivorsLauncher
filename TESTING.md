@@ -69,19 +69,20 @@ Maintainers can check a staged upload with `LauncherVerifier`, using the built m
 classes and two arguments: the installed game directory, then the staging `Contents`
 directory. The mod source repository is not needed by a subscriber's launcher.
 
-# Optional ZombieBuddy compatibility
+# ZombieBuddy runtime isolation
 
-ZombieBuddy remains a separate optional installation. Test these cases on Windows before
+ZombieBuddy remains a separate optional runtime. Test these cases on Windows before
 publishing a launcher update:
 
 1. No ZombieBuddy game-directory files: Knox launches normally and does not add it.
-2. Valid `ZombieBuddy.jar` plus `zbNative.dll`: the launcher status reports detection;
-   `JAVA_TOOL_OPTIONS` places `-agentlib:zbNative` before the Knox agent.
-3. The BAT already contains `-agentlib:zbNative`: ZombieBuddy is composed before Knox in
-   `JAVA_TOOL_OPTIONS`; ZombieBuddy safely ignores the later BAT entry.
-4. A custom inherited ZombieBuddy option such as `verbosity=2` remains byte-for-byte intact.
-5. With ZombieBuddy and FastLoading enabled, confirm the `ZombieBuddy` Lua global and the
-   FastLoading Java class exist, while the Knox bridge still reports ready.
+2. Valid `ZombieBuddy.jar` plus `zbNative.dll`, with no active agent option: the launcher
+   reports it as installed but inactive and injects only the Knox agent.
+3. The BAT or JSON contains `-agentlib:zbNative`: the launcher blocks before starting the game
+   with a clear choice between the ZombieBuddy and Knox Launcher paths.
+4. `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS`, or `JDK_JAVA_OPTIONS` contains an active ZombieBuddy
+   agent: the launcher blocks and identifies the responsible environment variable.
+5. Launch normally with ZombieBuddy and separately through the Knox Launcher. Confirm each
+   launch reports its own bridge-ready source and never loads both patch systems together.
 
 Subscription without ZombieBuddy's separate installation is expected to remain unavailable;
 the Knox launcher does not silently execute native code directly from a Workshop subscription.
@@ -92,7 +93,7 @@ the Knox launcher does not silently execute native code directly from a Workshop
    starts without debug tools.
 2. Check it and launch again. Confirm Project Zomboid starts with its normal debug tools and
    the launcher log reports `debug=true`.
-3. Confirm both launches still report the Knox bridge ready. If ZombieBuddy is installed,
-   also confirm its Lua global remains available in both modes.
+3. Confirm both launches still report the Knox bridge ready. Run this launcher test with
+   ZombieBuddy inactive; test the ZombieBuddy path in a separate normal game launch.
 4. On Windows, confirm Debug plus one quoted custom option works and a third combined option is
    rejected clearly rather than silently disappearing in `ProjectZomboid64.bat`.

@@ -23,25 +23,26 @@ final class GameLauncher {
             .redirectErrorStream(true)
             .redirectOutput(ProcessBuilder.Redirect.DISCARD);
         String existing = builder.environment().getOrDefault("JAVA_TOOL_OPTIONS", "").trim();
+        rejectZombieBuddyEnvironment("_JAVA_OPTIONS",
+            builder.environment().getOrDefault("_JAVA_OPTIONS", ""));
+        rejectZombieBuddyEnvironment("JDK_JAVA_OPTIONS",
+            builder.environment().getOrDefault("JDK_JAVA_OPTIONS", ""));
         LauncherLog.write("launch environment inheritedJavaToolOptions="
             + (existing.isBlank() ? "none" : "present(" + existing.length() + " chars)"));
-        // Keep Project Zomboid's normal launcher authoritative for VM flags.
-        // Its own command line/configuration wins over JAVA_TOOL_OPTIONS; adding
-        // -Xmx here would appear to work while silently being ignored. Knox
-        // only contributes its agent (and preserves compatible existing agents).
+
         String options = toolOptions(installation, existing, "");
-        ZombieBuddyCompatibility.Result zombieBuddy = ZombieBuddyCompatibility.inspect(installation);
         builder.environment().put("JAVA_TOOL_OPTIONS", options);
         try {
             LauncherLog.write("launch attempt executable=" + command.get(0)
                 + " gameLauncher=" + installation.gameLauncher()
                 + " workingDirectory=" + installation.gameDirectory()
-                + " agent=" + installation.agentJar());
+                + " agent=" + installation.agentJar()
+                + " runtimeMode=knox-launcher-only");
             Process process = builder.start();
             LauncherLog.write("launched platform=" + installation.platform()
                 + " game=" + installation.gameDirectory()
                 + " workshop=" + installation.workshopDirectory()
-                + " zombieBuddy=" + zombieBuddy.state()
+                + " runtimeMode=knox-launcher-only"
                 + " debug=" + debugMode
                 + " customOptions=" + (customOptions == null || customOptions.isBlank() ? "none" : "set"));
             try {
@@ -85,14 +86,26 @@ final class GameLauncher {
                 "Knox Survivors is already present in JAVA_TOOL_OPTIONS. Close other custom launchers and try again."
             );
         }
-        List<String> additions = new ArrayList<>();
-        // Validate legacy callers but never inject these flags. The platform
-        // launcher owns -Xms/-Xmx and must remain the single source of truth.
-        parseJvmOptions(jvmOptions);
-        ZombieBuddyCompatibility.Result zombieBuddy = ZombieBuddyCompatibility.inspect(installation);
-        if (zombieBuddy.enabled() && !containsZombieBuddyAgent(existing)) {
-            additions.add(zombieBuddy.option());
+        if (containsZombieBuddyAgent(existing)) {
+            throw new LauncherException(
+                "ZombieBuddy is active in JAVA_TOOL_OPTIONS. Pick one runtime: launch normally with ZombieBuddy, "
+                    + "or remove that ZombieBuddy option before using the Knox Survivors Launcher."
+            );
         }
+
+        ZombieBuddyCompatibility.Result zombieBuddy = ZombieBuddyCompatibility.inspect(installation);
+        if (zombieBuddy.active()) {
+            throw new LauncherException(
+                "ZombieBuddy is configured in Project Zomboid's launcher files. Pick one runtime: use Steam + "
+                    + "ZombieBuddy, or disable that ZombieBuddy game-launcher configuration before using the Knox Launcher."
+            );
+        }
+
+        // Validate legacy callers but never inject these flags. The platform launcher owns
+        // -Xms/-Xmx and must remain the single source of truth.
+        parseJvmOptions(jvmOptions);
+
+        List<String> additions = new ArrayList<>();
         additions.add("-javaagent:\"" + installation.agentJar().toAbsolutePath() + "\"=pz-game");
         if (!existing.isEmpty()) additions.add(0, existing);
         return String.join(" ", additions);
@@ -121,6 +134,15 @@ final class GameLauncher {
             || (value.contains("-javaagent:") && value.contains("zombiebuddy.jar"));
     }
 
+    static void rejectZombieBuddyEnvironment(String name, String options) throws LauncherException {
+        if (containsZombieBuddyAgent(options == null ? "" : options)) {
+            throw new LauncherException(
+                "ZombieBuddy is active in " + name + ". Pick one runtime: launch normally with ZombieBuddy, "
+                    + "or remove that ZombieBuddy option before using the Knox Survivors Launcher."
+            );
+        }
+    }
+
     static List<String> command(LauncherInstallation installation) throws LauncherException {
         return command(installation, false, "");
     }
@@ -142,8 +164,6 @@ final class GameLauncher {
         gameArguments.addAll(parseLaunchOptions(customOptions));
         if (installation.platform() == Platform.WINDOWS
                 && installation.gameLauncher().getFileName().toString().equalsIgnoreCase("ProjectZomboid64.exe")) {
-            // The native launcher reads ProjectZomboid64.json, including the
-            // user's heap configuration. The alternate BAT hard-codes 3072m.
             command.add(installation.gameLauncher().toAbsolutePath().toString());
             command.addAll(gameArguments);
             return command;
@@ -155,8 +175,6 @@ final class GameLauncher {
             );
         }
         if (installation.platform() == Platform.WINDOWS) {
-            // These arguments pass through cmd.exe and then the game's %1/%2 batch
-            // expansion. ProcessBuilder's executable quoting alone cannot protect them.
             for (String argument : gameArguments) {
                 if (argument.chars().anyMatch(ch -> "&|<>^%!\"".indexOf(ch) >= 0)) {
                     throw new LauncherException(
@@ -177,8 +195,6 @@ final class GameLauncher {
             StringBuilder payload = new StringBuilder("\"\"").append(launcherPath).append('"');
             for (String argument : gameArguments) {
                 payload.append(" \"").append(argument);
-                // The game's batch file forwards the quoted token to Java, whose
-                // Windows argument decoder consumes pairs of trailing backslashes.
                 for (int i = argument.length() - 1; i >= 0 && argument.charAt(i) == '\\'; i--) {
                     payload.append('\\');
                 }
@@ -208,8 +224,6 @@ final class GameLauncher {
                 if (ch == quote) {
                     quoted = false;
                 } else {
-                    // Backslashes are literal path separators, including immediately
-                    // before a closing quote in a Windows directory path.
                     token.append(ch);
                 }
             } else if (ch == '"' || ch == '\'') {

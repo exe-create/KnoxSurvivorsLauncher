@@ -49,9 +49,9 @@ Project Zomboid owns its JVM memory setting. The launcher reads the effective co
 
 The launcher uses Project Zomboid's bundled Java runtime; players do not need to install a separate Java runtime.
 
-## Optional ZombieBuddy compatibility
+## ZombieBuddy and the Knox Launcher
 
-ZombieBuddy is not required. If a valid ZombieBuddy installation is present, the launcher preserves its compatible agent configuration and orders it before the Knox agent. Knox does not install, update, approve or silently enable another mod's native code.
+ZombieBuddy is not required. Choose exactly one runtime per game launch: launch Project Zomboid normally with ZombieBuddy, or disable ZombieBuddy's game-launcher configuration and use the Knox Launcher. The Knox Launcher never injects or composes ZombieBuddy; an installed but inactive copy is allowed.
 
 ## Launcher updates
 

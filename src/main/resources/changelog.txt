@@ -24,4 +24,4 @@
 
 [Earlier] IsoPlayer rebuild
 - Workshop files + Java runtime checksum verified before launch.
-- ZombieBuddy compatibility kept where installed.
+- ZombieBuddy and Knox Launcher runtime paths are isolated to prevent double patching.

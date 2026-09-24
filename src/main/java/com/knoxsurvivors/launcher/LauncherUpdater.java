@@ -21,7 +21,7 @@ import java.util.jar.JarFile;
 
 /** Small, fail-closed updater. It never replaces the running JAR in place. */
 final class LauncherUpdater {
-    static final String CURRENT_VERSION = "0.3.1";
+    static final String CURRENT_VERSION = currentVersion();
     private static final String API = "https://api.github.com/repos/exe-create/KnoxSurvivorsLauncher/releases";
     private static final Pattern SHA = Pattern.compile("(?im)^([0-9a-f]{64})[ \\t]+\\*?KnoxSurvivorsLauncher\\.jar[ \\t]*$");
     private static final Pattern VERSION = Pattern.compile("^v?(\\d+)\\.(\\d+)\\.(\\d+)(?:-([0-9A-Za-z.-]+))?$");
@@ -32,6 +32,11 @@ final class LauncherUpdater {
 
     LauncherUpdater() { this(Path.of(System.getProperty("user.home", "."), "KnoxSurvivors")); }
     LauncherUpdater(Path home) { this.home = home; this.client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).followRedirects(HttpClient.Redirect.NORMAL).build(); }
+
+    private static String currentVersion() {
+        String packaged = LauncherUpdater.class.getPackage().getImplementationVersion();
+        return packaged == null || packaged.isBlank() ? "0.3.1" : packaged;
+    }
 
     Update check() throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder(URI.create(API)).header("Accept", "application/vnd.github+json").header("User-Agent", "KnoxSurvivorsLauncher/" + CURRENT_VERSION).timeout(Duration.ofSeconds(8)).GET().build();
@@ -168,7 +173,14 @@ final class LauncherUpdater {
     }
     private static String safeVersion(String version) { return version.replaceAll("[^A-Za-z0-9._-]", "_"); }
     private static String property(Path file, String key) throws IOException { for (String line : Files.readAllLines(file)) if (line.startsWith(key + "=")) return line.substring(key.length() + 1); return ""; }
-    private static String javaExecutable() { return Path.of(System.getProperty("java.home"), "bin", System.getProperty("os.name").toLowerCase().contains("win") ? "java.exe" : "java").toString(); }
+    static Path javaExecutable(Path javaHome, boolean windows) {
+        return javaHome.resolve("bin").resolve(windows ? "javaw.exe" : "java");
+    }
+    private static String javaExecutable() {
+        return javaExecutable(Path.of(System.getProperty("java.home")),
+            System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT).contains("win"))
+            .toString();
+    }
     private static void verifyJar(Path jar, String version) throws IOException { try (JarFile file = new JarFile(jar.toFile())) { var manifest = file.getManifest(); if (manifest == null || !"com.knoxsurvivors.launcher.Main".equals(manifest.getMainAttributes().getValue("Main-Class")) || !version.replaceFirst("^v", "").equals(manifest.getMainAttributes().getValue("Implementation-Version")) || !"1".equals(manifest.getMainAttributes().getValue("Knox-Update-Protocol"))) throw new IOException("Launcher update manifest is invalid."); } }
     private static String sha256(Path file) throws IOException { try (InputStream input = Files.newInputStream(file)) { var digest = getDigest(); input.transferTo(new java.security.DigestOutputStream(java.io.OutputStream.nullOutputStream(), digest)); return HexFormat.of().formatHex(digest.digest()); } }
     private static MessageDigest getDigest() { try { return MessageDigest.getInstance("SHA-256"); } catch (Exception e) { throw new IllegalStateException(e); } }

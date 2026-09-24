@@ -39,13 +39,13 @@ It does **not** patch Project Zomboid, modify Steam, require administrator acces
 
 The **Custom Launch Options** field is for game arguments you would otherwise add to Project Zomboid's Steam launch options. The value is remembered for later launcher starts.
 
-On Windows, the launcher intentionally prefers `ProjectZomboid64.bat` so Project Zomboid's bundled Java runtime is used consistently with the Knox Java agent. The BAT currently forwards at most two game options; the Knox launcher rejects extras rather than silently dropping them. Debug mode counts as one option.
+On Windows, the launcher prefers `ProjectZomboid64.exe` when the matching `ProjectZomboid64.json` is present. This lets the game apply its own JVM and platform settings, including memory. For that launch only, the launcher puts Project Zomboid's bundled Java folders first on `PATH` to avoid loading Java DLLs from a separate system installation. If the native launcher or JSON file is missing, it falls back to the bundled-Java BAT route.
 
 For safety, Windows shell operators and environment-variable expressions are rejected in custom options. Enter expanded paths instead of `%USERPROFILE%`-style variables.
 
 ## Project Zomboid memory
 
-Project Zomboid owns its JVM memory setting. The launcher reads the effective configuration for display, but does not rewrite `ProjectZomboid64.json`, inject a competing heap flag, or allocate all installed RAM. Change memory through Project Zomboid's normal configuration.
+Project Zomboid owns its JVM memory setting. On the native Windows route, the game reads `ProjectZomboid64.json`; the launcher displays the configured heap but does not rewrite the file or add a competing heap flag. Change memory and other JVM settings through Project Zomboid's normal configuration. The launcher never allocates all installed RAM automatically.
 
 The launcher uses Project Zomboid's bundled Java runtime; players do not need to install a separate Java runtime.
 
@@ -55,7 +55,7 @@ ZombieBuddy is not required. Choose exactly one runtime per game launch: launch 
 
 ## Launcher updates
 
-The launcher can check the public GitHub releases for a newer non-draft build. Updates are downloaded to the user's `KnoxSurvivors/launcher-updates` directory, verified against the release checksum and JAR metadata, and never overwrite the currently running JAR in place. A network failure does not block normal play.
+The launcher checks public GitHub releases at startup and automatically downloads and restarts into a newer non-draft build. If that check fails, use the launcher update button to retry; it checks and installs in one click. Updates are downloaded to the user's `KnoxSurvivors/launcher-updates` directory, verified against the release checksum and JAR metadata, and never overwrite the currently running JAR in place. A network failure does not block normal play.
 
 ## Support
 

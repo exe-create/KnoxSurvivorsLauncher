@@ -983,7 +983,43 @@ public final class Main {
     }
 
     private void updateLauncher() {
-        if (availableUpdate == null) { checkLauncherUpdate(); refresh(false); return; }
+        if (availableUpdate == null) {
+            installUpdate.setEnabled(false);
+            installUpdate.setToolTipText("Checking for and installing a launcher update...");
+            setUpdateStatusSuffix("");
+            setStatus("Checking for a launcher update...", GREEN, "Checking GitHub releases.");
+            new SwingWorker<LauncherUpdater.Update, Void>() {
+                @Override protected LauncherUpdater.Update doInBackground() throws Exception {
+                    return new LauncherUpdater().check();
+                }
+                @Override protected void done() {
+                    try {
+                        LauncherUpdater.Update update = get();
+                        if (update == null) {
+                            installUpdate.setEnabled(true);
+                            availableUpdate = null;
+                            installUpdate.setToolTipText("Launcher is up to date - click to check again.");
+                            setUpdateStatusSuffix("  -  LAUNCHER UP TO DATE");
+                            setStatus("Launcher is up to date.", GREEN, "No newer launcher release was found.");
+                            return;
+                        }
+                        availableUpdate = update;
+                        installLauncherUpdate(update);
+                    } catch (Exception exception) {
+                        installUpdate.setEnabled(true);
+                        String reason = safeMessage(exception, "Launcher update check failed.");
+                        installUpdate.setToolTipText("Update check failed - click to retry.");
+                        setStatus("UPDATE CHECK FAILED  -  " + reason, ERROR, reason);
+                        LauncherLog.writeException("manual launcher update check failed", exception);
+                    }
+                }
+            }.execute();
+            return;
+        }
+        installLauncherUpdate(availableUpdate);
+    }
+
+    private void installLauncherUpdate(LauncherUpdater.Update update) {
         installUpdate.setEnabled(false);
         settingsButton.setEnabled(false);
         setUpdateStatusSuffix("");
@@ -991,7 +1027,7 @@ public final class Main {
         new SwingWorker<Boolean, Void>() {
             @Override protected Boolean doInBackground() throws Exception {
                 LauncherUpdater updater = new LauncherUpdater();
-                updater.install(availableUpdate);
+                updater.install(update);
                 return updater.launchCachedIfNewer();
             }
             @Override protected void done() {

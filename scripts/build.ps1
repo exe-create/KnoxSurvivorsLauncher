@@ -4,6 +4,10 @@ $build = Join-Path $root 'build'
 $classes = Join-Path $build 'classes'
 $testClasses = Join-Path $build 'test-classes'
 $dist = Join-Path $root 'dist'
+$version = '0.3.1'
+if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -match '^v?([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)$') {
+    $version = $Matches[1]
+}
 
 Remove-Item -LiteralPath $build -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $dist -Recurse -Force -ErrorAction SilentlyContinue
@@ -18,7 +22,7 @@ if (Test-Path -LiteralPath $resources) {
         Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $classes $_.Name) -Force
     }
 }
-@("Manifest-Version: 1.0", "Main-Class: com.knoxsurvivors.launcher.Main", "Implementation-Version: 0.3.1", "Knox-Update-Protocol: 1", "") | Set-Content (Join-Path $build 'MANIFEST.MF') -Encoding ascii
+@("Manifest-Version: 1.0", "Main-Class: com.knoxsurvivors.launcher.Main", "Implementation-Version: $version", "Knox-Update-Protocol: 1", "") | Set-Content (Join-Path $build 'MANIFEST.MF') -Encoding ascii
 & jar --create --file (Join-Path $root 'KnoxSurvivorsLauncher.jar') --manifest (Join-Path $build 'MANIFEST.MF') -C $classes .
 if ($LASTEXITCODE -ne 0) { throw 'Launcher packaging failed.' }
 & javac --release 17 -cp $classes -d $testClasses $tests

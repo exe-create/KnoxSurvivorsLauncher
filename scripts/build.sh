@@ -6,6 +6,14 @@ BUILD="$ROOT/build"
 CLASSES="$BUILD/classes"
 TEST_CLASSES="$BUILD/test-classes"
 DIST="$ROOT/dist"
+VERSION=0.3.1
+if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+  VERSION=${GITHUB_REF_NAME#v}
+  if ! printf '%s\n' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+    echo "Invalid launcher release tag: ${GITHUB_REF_NAME:-}" >&2
+    exit 1
+  fi
+fi
 rm -rf "$BUILD"
 rm -rf "$DIST"
 mkdir -p "$CLASSES" "$TEST_CLASSES" "$DIST"
@@ -17,7 +25,7 @@ if [ -d "$ROOT/src/main/resources" ]; then
     case "$(basename "$f")" in README.txt) continue;; *) cp "$f" "$CLASSES/";; esac
   done
 fi
-printf '%s\n' 'Manifest-Version: 1.0' 'Main-Class: com.knoxsurvivors.launcher.Main' 'Implementation-Version: 0.3.1' 'Knox-Update-Protocol: 1' > "$BUILD/MANIFEST.MF"
+printf '%s\n' 'Manifest-Version: 1.0' 'Main-Class: com.knoxsurvivors.launcher.Main' "Implementation-Version: $VERSION" 'Knox-Update-Protocol: 1' > "$BUILD/MANIFEST.MF"
 jar --create --file "$ROOT/KnoxSurvivorsLauncher.jar" --manifest "$BUILD/MANIFEST.MF" -C "$CLASSES" .
 find "$ROOT/src/test/java" -name '*.java' -print | sed 's/.*/"&"/' > "$BUILD/test-sources.txt"
 javac --release 17 -cp "$CLASSES" -d "$TEST_CLASSES" @"$BUILD/test-sources.txt"

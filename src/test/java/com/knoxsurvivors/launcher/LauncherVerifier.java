@@ -97,10 +97,20 @@ public final class LauncherVerifier {
         Files.writeString(game.resolve("ProjectZomboid64.exe"), "fixture");
         String configured = "{\"vmArgs\":[\"-Xmx8192m\"]}";
         Files.writeString(game.resolve("ProjectZomboid64.json"), configured);
+        for (String runtimeFile : List.of("jre64/bin/java.dll", "jre64/bin/jli.dll",
+                "jre64/bin/instrument.dll", "jre64/bin/server/jvm.dll")) {
+            Path file = game.resolve(runtimeFile);
+            Files.createDirectories(file.getParent());
+            Files.writeString(file, "fixture");
+        }
         LauncherInstallation rediscovered = new SteamLocator().locateFromRoots(
             List.of(gameRoot, workshopRoot), Platform.WINDOWS);
-        require(rediscovered.gameLauncher().equals(game.resolve("ProjectZomboid64.bat")),
-            "Windows must prefer the bundled-Java BAT launcher for Knox agent injection");
+        require(rediscovered.gameLauncher().equals(game.resolve("ProjectZomboid64.exe")),
+            "Windows must prefer the native launcher so its JSON settings are applied");
+        new InstallationValidator().validate(rediscovered);
+        MemoryProbe.Heap heap = MemoryProbe.gameHeap(rediscovered);
+        require(heap.value().equals("8192m") && heap.source().equals("ProjectZomboid64.json"),
+            "native launcher must report memory from ProjectZomboid64.json");
         require(Files.readString(game.resolve("ProjectZomboid64.json")).equals(configured),
             "user memory configuration must remain untouched");
     }
@@ -208,6 +218,22 @@ public final class LauncherVerifier {
             "Windows BAT launcher must run through cmd");
         require(command.get(command.size() - 1).contains("-debug"), "debug argument missing");
         require(command.get(command.size() - 1).contains("-novoip"), "custom argument missing");
+
+        Path nativeLauncher = game.resolve("ProjectZomboid64.exe");
+        LauncherInstallation nativeInstallation = new LauncherInstallation(
+            root, game, root, root, agent, nativeLauncher, Platform.WINDOWS
+        );
+        List<String> nativeCommand = GameLauncher.command(nativeInstallation, true, "-novoip");
+        require(nativeCommand.size() == 3
+                && nativeCommand.get(0).equals(nativeLauncher.toAbsolutePath().toString())
+                && nativeCommand.contains("-debug") && nativeCommand.contains("-novoip"),
+            "native EXE launch must receive game options directly");
+        String isolatedPath = GameLauncher.bundledRuntimePath(game, "C:\\Zulu\\bin;C:\\Windows\\System32");
+        String expectedPrefix = game.resolve("jre64/bin").toAbsolutePath()
+            + java.io.File.pathSeparator + game.resolve("jre64/bin/server").toAbsolutePath();
+        require(isolatedPath.startsWith(expectedPrefix + java.io.File.pathSeparator)
+                && isolatedPath.endsWith("C:\\Zulu\\bin;C:\\Windows\\System32"),
+            "native EXE launch must prioritize PZ's bundled Java and preserve the existing PATH");
     }
 
     private static void verifyChildLaunch(Path root) throws Exception {

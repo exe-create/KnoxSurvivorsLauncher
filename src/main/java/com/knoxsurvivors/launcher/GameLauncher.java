@@ -1,6 +1,7 @@
 package com.knoxsurvivors.launcher;
 
 import java.io.IOException;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +33,12 @@ final class GameLauncher {
 
         String options = toolOptions(installation, existing, "");
         builder.environment().put("JAVA_TOOL_OPTIONS", options);
+        if (usesNativeWindowsLauncher(installation)) {
+            String existingPath = builder.environment().getOrDefault("PATH", "");
+            builder.environment().put("PATH", bundledRuntimePath(
+                installation.gameDirectory(), existingPath));
+            LauncherLog.write("launch environment bundledJavaPathPrepended=true");
+        }
         try {
             LauncherLog.write("launch attempt executable=" + command.get(0)
                 + " gameLauncher=" + installation.gameLauncher()
@@ -121,6 +128,20 @@ final class GameLauncher {
             }
         }
         return options;
+    }
+
+    static boolean usesNativeWindowsLauncher(LauncherInstallation installation) {
+        return installation.platform() == Platform.WINDOWS
+            && installation.gameLauncher().getFileName().toString()
+                .equalsIgnoreCase("ProjectZomboid64.exe");
+    }
+
+    static String bundledRuntimePath(java.nio.file.Path gameDirectory, String inheritedPath) {
+        String bin = gameDirectory.resolve("jre64/bin").toAbsolutePath().toString();
+        String server = gameDirectory.resolve("jre64/bin/server").toAbsolutePath().toString();
+        String inherited = inheritedPath == null ? "" : inheritedPath.trim();
+        return bin + File.pathSeparator + server
+            + (inherited.isEmpty() ? "" : File.pathSeparator + inherited);
     }
 
     private static boolean containsKnoxAgent(String options) {

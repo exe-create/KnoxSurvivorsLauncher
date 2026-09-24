@@ -14,6 +14,10 @@ final class UpdaterVerifier {
             + "\"prerelease\":true,\"draft\":" + draft + ",\"tag_name\":\"" + version + "\"}";
     }
     static void verify(java.nio.file.Path root) throws Exception {
+        check(LauncherUpdater.javaExecutable(java.nio.file.Path.of("C:/java"), true)
+            .endsWith(java.nio.file.Path.of("bin", "javaw.exe")), "Windows restart stays windowless");
+        check(LauncherUpdater.javaExecutable(java.nio.file.Path.of("/java"), false)
+            .endsWith(java.nio.file.Path.of("bin", "java")), "Unix restart uses java");
         check(LauncherUpdater.compare("v0.2.3-preview.10", "0.2.3-preview.2") > 0, "numeric prerelease ordering");
         check(LauncherUpdater.compare("0.2.3", "0.2.3-preview.10") > 0, "stable follows preview");
         check(LauncherUpdater.compare("99999999999999999999.0.0", "1.0.0") > 0, "large version does not overflow");

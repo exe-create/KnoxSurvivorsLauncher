@@ -29,6 +29,18 @@ final class InstallationValidator {
             require(Files.isRegularFile(installation.gameDirectory().resolve("jre64/bin/java.exe")),
                 "Project Zomboid's bundled Java runtime is missing (jre64\\bin\\java.exe). Verify the game through Steam.");
         }
+        if (GameLauncher.usesNativeWindowsLauncher(installation)) {
+            Path game = installation.gameDirectory();
+            require(Files.isRegularFile(game.resolve("ProjectZomboid64.json")),
+                "Project Zomboid's JVM settings are missing (ProjectZomboid64.json). Verify the game through Steam.");
+            for (String runtimeFile : new String[] {
+                    "jre64/bin/java.dll", "jre64/bin/jli.dll",
+                    "jre64/bin/instrument.dll", "jre64/bin/server/jvm.dll" }) {
+                require(Files.isRegularFile(game.resolve(runtimeFile)),
+                    "Project Zomboid's bundled Java runtime is incomplete (" + runtimeFile
+                        + "). Verify the game through Steam.");
+            }
+        }
         validateModInfo(installation.modDirectory().resolve("mod.info"));
         validateModInfo(installation.modDirectory().resolve("42/mod.info"));
         Path buildInfo = installation.modDirectory().resolve("42/knox-runtime.properties");

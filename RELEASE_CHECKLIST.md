@@ -7,7 +7,7 @@ Workshop build is uploaded and verified from a normal subscribed installation.
 2. Confirm `runtime=zombie-buddy-java-mod-v1`, `legacyAgentCompatible=true`, and that `runtimeVersion` matches the agent JAR manifest version.
 3. Test the staged Workshop package and launcher on Windows.
    - If publishing ZombieBuddy compatibility, test no-install, valid install, existing
-     BAT configuration, JSON custom options, and ZombieBuddy + FastLoading live together.
+     JSON memory/settings, process-local bundled-Java isolation, and ZombieBuddy + FastLoading live together.
    - Launch once with Debug Mode off and once with it on. Confirm only the second game
      receives `-debug`, and that Knox and optional ZombieBuddy initialization are unchanged.
 4. Commit and push launcher changes.

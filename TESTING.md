@@ -60,10 +60,11 @@ spaced paths. Windows also tests the bootstrap script with a temporary Steam/lib
 fixture. These checks do not start Project Zomboid or validate in-game NPC behavior.
 
 The Windows argument regressions reject shell operators, variable expansion, embedded quotes,
-and control characters. A fixture batch file forwards `%1 %2` to a real Java argument recorder
-to check no options, Debug plus custom options, spaces, trailing backslashes, and game paths
-containing ampersands and parentheses. Parser checks also retain unmatched-quote errors and
-ensure Windows shell restrictions do not affect direct Linux/macOS arguments.
+and control characters. The native EXE receives game options directly; a fixture batch file
+still verifies the fallback route's `%1 %2` forwarding. Tests cover JSON memory detection,
+bundled-Java `PATH` priority while preserving the existing suffix, spaces, trailing backslashes,
+and game paths containing ampersands and parentheses. Parser checks also retain unmatched-quote
+errors and ensure Windows shell restrictions do not affect direct Linux/macOS arguments.
 
 Maintainers can check a staged upload with `LauncherVerifier`, using the built main/test
 classes and two arguments: the installed game directory, then the staging `Contents`
@@ -95,5 +96,6 @@ the Knox launcher does not silently execute native code directly from a Workshop
    the launcher log reports `debug=true`.
 3. Confirm both launches still report the Knox bridge ready. Run this launcher test with
    ZombieBuddy inactive; test the ZombieBuddy path in a separate normal game launch.
-4. On Windows, confirm Debug plus one quoted custom option works and a third combined option is
-   rejected clearly rather than silently disappearing in `ProjectZomboid64.bat`.
+4. On Windows, confirm the native EXE applies `ProjectZomboid64.json`, Debug and custom game
+   options work, and the launcher leaves the JSON unchanged. If testing the BAT fallback,
+   confirm it clearly rejects more than two forwarded game options.

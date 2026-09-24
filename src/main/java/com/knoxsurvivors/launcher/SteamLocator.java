@@ -249,12 +249,13 @@ final class SteamLocator {
     private static Path gameLauncher(Path game, Platform platform) throws LauncherException {
         List<Path> candidates = new ArrayList<>();
         if (platform == Platform.WINDOWS) {
-            // Knox's Java agent is reliable through PZ's bundled-Java BAT launcher.
-            // The native EXE can resolve an unrelated system Java DLL before the
-            // bundled runtime when JAVA_TOOL_OPTIONS contains -javaagent, which
-            // prevents the game from starting on otherwise valid installs.
+            Path nativeLauncher = game.resolve("ProjectZomboid64.exe");
+            Path nativeConfig = game.resolve("ProjectZomboid64.json");
+            if (Files.isRegularFile(nativeLauncher) && Files.isRegularFile(nativeConfig)) {
+                candidates.add(nativeLauncher);
+            }
             candidates.add(game.resolve("ProjectZomboid64.bat"));
-            candidates.add(game.resolve("ProjectZomboid64.exe"));
+            if (Files.isRegularFile(nativeLauncher)) candidates.add(nativeLauncher);
         } else {
             candidates.add(game.resolve("projectzomboid.sh"));
             candidates.add(game.resolve("ProjectZomboid64"));

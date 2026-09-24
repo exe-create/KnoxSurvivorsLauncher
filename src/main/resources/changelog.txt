@@ -1,3 +1,11 @@
+[Unreleased] Windows settings path
+- Prefer the native ProjectZomboid64.exe so ProjectZomboid64.json supplies memory and other JVM settings.
+- Put the game's bundled Java folders first on PATH for that process only to avoid mixed Java DLLs.
+- Keep the bundled-Java BAT as a fallback when the native launcher or JSON file is unavailable.
+- Check for launcher releases at startup and install a verified update automatically.
+- Make the update button retry, download, and restart in one click when startup update checking fails.
+- Stamp release JARs with their tag version so future automatic updates recognize the installed version.
+
 [0.3.1] Runtime isolation fix
 - Updated launcher validation for the current ZombieBuddy-compatible Knox Workshop runtime.
 - Prevented Knox and ZombieBuddy patch systems from loading together in one game process.

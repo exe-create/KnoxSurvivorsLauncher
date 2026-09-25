@@ -189,6 +189,9 @@ public final class LauncherVerifier {
             "nested Linux game directory not found");
         require(found.gameLauncher().equals(game.resolve("projectzomboid.sh").toAbsolutePath().normalize()),
             "nested Linux install must keep launching through the parent wrapper script");
+        require(InstallationValidator.resolveGameJar(game.toAbsolutePath().normalize())
+                .equals(payload.resolve("projectzomboid.jar").toAbsolutePath().normalize()),
+            "shared game-jar resolution must prefer the nested Linux payload");
         new InstallationValidator().validate(found);
 
         Files.delete(payload.resolve("projectzomboid.jar"));

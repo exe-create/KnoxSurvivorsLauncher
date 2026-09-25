@@ -72,7 +72,7 @@ final class InstallationValidator {
         }
     }
 
-    private static Path resolveGameJar(Path gameDirectory) {
+    static Path resolveGameJar(Path gameDirectory) {
         Path flat = gameDirectory.resolve("projectzomboid.jar");
         if (Files.isRegularFile(flat)) {
             return flat;

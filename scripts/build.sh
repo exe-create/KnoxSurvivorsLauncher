@@ -6,7 +6,7 @@ BUILD="$ROOT/build"
 CLASSES="$BUILD/classes"
 TEST_CLASSES="$BUILD/test-classes"
 DIST="$ROOT/dist"
-VERSION=0.3.2
+VERSION=0.3.3
 if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
   VERSION=${GITHUB_REF_NAME#v}
   if ! printf '%s\n' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then

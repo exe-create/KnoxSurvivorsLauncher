@@ -533,7 +533,7 @@ public final class Main {
         } else if (!Files.isRegularFile(found.gameLauncher())) {
             out.gameState = CheckState.ERROR;
             out.gameDetail = "Project Zomboid launcher is missing - verify the game through Steam.";
-        } else if (!Files.isRegularFile(found.gameDirectory().resolve("projectzomboid.jar"))) {
+        } else if (!Files.isRegularFile(InstallationValidator.resolveGameJar(found.gameDirectory()))) {
             out.gameState = CheckState.ERROR;
             out.gameDetail = "Project Zomboid looks incomplete - verify the game through Steam.";
         } else if (found.platform() == Platform.WINDOWS

@@ -1,3 +1,6 @@
+[0.3.3] Nested Linux game check
+- Apply the nested projectzomboid/ payload acceptance to the launcher status check as well as validation, so the game dot no longer reports incomplete on stock Linux Steam layouts.
+
 [0.3.2] Nested Linux game payload
 - Accept Linux Steam installs where projectzomboid.sh stays in .../ProjectZomboid/ while projectzomboid.jar lives in .../ProjectZomboid/projectzomboid/. Launching still uses the parent wrapper script.
 

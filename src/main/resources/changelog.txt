@@ -1,3 +1,6 @@
+[0.3.2] Nested Linux game payload
+- Accept Linux Steam installs where projectzomboid.sh stays in .../ProjectZomboid/ while projectzomboid.jar lives in .../ProjectZomboid/projectzomboid/. Launching still uses the parent wrapper script.
+
 [Unreleased] Windows settings path
 - Prefer the native ProjectZomboid64.exe so ProjectZomboid64.json supplies memory and other JVM settings.
 - Put the game's bundled Java folders first on PATH for that process only to avoid mixed Java DLLs.

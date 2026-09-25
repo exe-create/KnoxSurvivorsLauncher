@@ -20,6 +20,7 @@ public final class LauncherVerifier {
             verifySplitLibraryDiscovery(root);
             verifyIndependentRootDiscovery(root);
             verifyValidationAndKnoxJarDiscovery(root);
+            verifyNestedLinuxPayload(root);
             verifyRuntimeIsolation(root);
             verifyCommands(root);
             verifyChildLaunch(root);
@@ -161,6 +162,37 @@ public final class LauncherVerifier {
         LauncherInstallation withZombieBuddy = new SteamLocator().locateFromRoots(List.of(steam), Platform.WINDOWS);
         require(withZombieBuddy.agentJar().equals(jar.toAbsolutePath().normalize()),
             "ZombieBuddy was mistaken for the Knox agent");
+    }
+
+    private static void verifyNestedLinuxPayload(Path root) throws Exception {
+        Path steam = root.resolve("Nested Linux Steam");
+        Path game = steam.resolve("steamapps/common/ProjectZomboid");
+        Path payload = game.resolve("projectzomboid");
+        Path workshop = steam.resolve("steamapps/workshop/content/108600/3749727604");
+        Path mod = workshop.resolve("mods/KnoxSurvivors");
+        Path jar = mod.resolve("java/knox-agent.jar");
+        Files.createDirectories(payload.resolve("jre64/bin"));
+        Files.createDirectories(mod.resolve("42"));
+        Files.createDirectories(jar.getParent());
+        Files.writeString(game.resolve("projectzomboid.sh"), "#!/bin/sh\nexit 0\n");
+        Files.writeString(payload.resolve("projectzomboid.jar"), "fixture");
+        Files.writeString(payload.resolve("ProjectZomboid64"), "fixture");
+        Files.writeString(mod.resolve("mod.info"), "name=Knox Survivors\nid=KnoxSurvivors\n");
+        Files.copy(mod.resolve("mod.info"), mod.resolve("42/mod.info"));
+        Files.writeString(mod.resolve("42/knox-runtime.properties"),
+            "runtime=zombie-buddy-java-mod-v1\nlegacyAgentCompatible=true\nruntimeVersion=0.3.0-rc1\n");
+        createAgent(jar, "0.3.0-rc1");
+        Files.writeString(Path.of(jar + ".sha256"), sha256(jar) + "  " + jar.getFileName());
+
+        LauncherInstallation found = new SteamLocator().locateFromRoots(List.of(steam), Platform.LINUX);
+        require(found.gameDirectory().equals(game.toAbsolutePath().normalize()),
+            "nested Linux game directory not found");
+        require(found.gameLauncher().equals(game.resolve("projectzomboid.sh").toAbsolutePath().normalize()),
+            "nested Linux install must keep launching through the parent wrapper script");
+        new InstallationValidator().validate(found);
+
+        Files.delete(payload.resolve("projectzomboid.jar"));
+        expectFailure(() -> new InstallationValidator().validate(found), "projectzomboid.jar");
     }
 
     private static void verifyRuntimeIsolation(Path root) throws Exception {

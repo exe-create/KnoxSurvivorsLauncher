@@ -22,7 +22,7 @@ final class InstallationValidator {
             "Project Zomboid's installation folder is missing.");
         require(Files.isRegularFile(installation.gameLauncher()),
             "Project Zomboid's normal launcher is missing.");
-        require(Files.isRegularFile(installation.gameDirectory().resolve("projectzomboid.jar")),
+        require(Files.isRegularFile(resolveGameJar(installation.gameDirectory())),
             "Project Zomboid looks incomplete: projectzomboid.jar is missing. Verify the game through Steam.");
         if (installation.platform() == Platform.WINDOWS
                 && installation.gameLauncher().getFileName().toString().equalsIgnoreCase("ProjectZomboid64.bat")) {
@@ -70,6 +70,22 @@ final class InstallationValidator {
         } catch (IOException exception) {
             throw new LauncherException("The Knox runtime marker could not be read.", exception);
         }
+    }
+
+    private static Path resolveGameJar(Path gameDirectory) {
+        Path flat = gameDirectory.resolve("projectzomboid.jar");
+        if (Files.isRegularFile(flat)) {
+            return flat;
+        }
+        // Some Linux Steam installs keep the payload one level down:
+        // .../common/ProjectZomboid/ holds projectzomboid.sh while the jar,
+        // native binary and jre live in .../ProjectZomboid/projectzomboid/.
+        // Keep launching through the parent wrapper script; only resolve the jar here.
+        Path nested = gameDirectory.resolve("projectzomboid/projectzomboid.jar");
+        if (Files.isRegularFile(nested)) {
+            return nested;
+        }
+        return flat;
     }
 
     private static void validateModInfo(Path file) throws LauncherException {

@@ -4,7 +4,7 @@ $build = Join-Path $root 'build'
 $classes = Join-Path $build 'classes'
 $testClasses = Join-Path $build 'test-classes'
 $dist = Join-Path $root 'dist'
-$version = '0.3.1'
+$version = '0.3.2'
 if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -match '^v?([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)$') {
     $version = $Matches[1]
 }
